@@ -1,0 +1,60 @@
+{
+  "version": "1.0",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "id": "block-destructive-shell",
+        "description": "บล็อกคำสั่งทำลายล้างและคำสั่งอันตรายบน Git/DB ทันที",
+        "matcher": {
+          "tool": "shell",
+          "commandPattern": "(rm\\s+-rf\\s+(/|~|\\.|\\*)|git\\s+push\\s+.*(--force|-f)|git\\s+reset\\s+--hard|DROP\\s+(TABLE|DATABASE)|TRUNCATE\\s+TABLE)"
+        },
+        "action": "deny",
+        "message": "Blocked by Guardrail: คำสั่งนี้อาจทำให้ข้อมูลหรือประวัติโค้ดเสียหาย ห้ามรันอัตโนมัติ"
+      },
+      {
+        "id": "protect-secrets-files",
+        "description": "ห้ามแก้ไขหรือเขียนทับไฟล์ความลับและ Credentials",
+        "matcher": {
+          "tool": "file_write",
+          "pathPattern": "(^|/)(\\.env($|\\..*)|.*\\.(pem|key|p12|crt)|secrets\\..*|.*serviceAccount.*)$",
+          "excludePattern": "\\.env\\.example$"
+        },
+        "action": "deny",
+        "message": "Blocked by Guardrail: ไม่อนุญาตให้ Agent แก้ไขไฟล์ .env หรือไฟล์คีย์โดยตรง"
+      },
+      {
+        "id": "approve-prod-and-migrations",
+        "description": "บังคับขออนุมัติจากคนก่อน Deploy ขึ้น Production หรือรัน Migration",
+        "matcher": {
+          "tool": "shell",
+          "commandPattern": "(deploy\\s+.*--prod|vercel\\s+(--prod|deploy\\s+--prod)|migrate\\s+deploy|alembic\\s+upgrade|docker\\s+compose\\s+up.*prod)"
+        },
+        "action": "ask",
+        "message": "Approval Required: คำสั่งนี้กระทบระบบ Production หรือ Deployment กรุณาตรวจสอบก่อนอนุมัติ"
+      },
+      {
+        "id": "approve-new-dependencies",
+        "description": "ขออนุมัติก่อนติดตั้ง Package ใหม่เพื่อคุมขนาดโปรเจกต์และ Security",
+        "matcher": {
+          "tool": "shell",
+          "commandPattern": "(npm\\s+(install|i)(\\s|$)|pnpm\\s+add|yarn\\s+add|bun\\s+add|pip\\s+install|uv\\s+add|cargo\\s+add)"
+        },
+        "action": "ask",
+        "message": "Approval Required: ตรวจสอบ Package และความจำเป็นก่อนติดตั้ง (หากต้องการติดตั้งตาม lockfile ให้ใช้ npm ci)"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "id": "auto-format-after-edit",
+        "description": "จัดฟอร์แมตโค้ดอัตโนมัติทุกครั้งที่แก้ไฟล์ เพื่อลด Noise ใน Diff",
+        "matcher": {
+          "tool": "file_write",
+          "pathPattern": "\\.(ts|tsx|js|jsx|mjs|py|json|md)$"
+        },
+        "action": "run",
+        "command": "npx --no-install prettier --write \"${file_path}\" 2>/dev/null || ruff format \"${file_path}\" 2>/dev/null || true"
+      }
+    ]
+  }
+}

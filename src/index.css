@@ -1,0 +1,558 @@
+@import "tailwindcss" source("../src");
+@source "../index.html";
+@source not "./utils/*.test.ts";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Inter', 'IBM Plex Sans Thai', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: 'Inter', 'IBM Plex Sans Thai', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Sans Thai', ui-monospace, monospace;
+}
+
+@theme inline {
+  --color-canvas: var(--desk-canvas);
+  --color-panel: var(--desk-panel);
+  --color-hairline: var(--desk-line);
+  --color-ink: var(--desk-ink);
+  --color-muted: var(--desk-muted);
+  --color-focus: var(--desk-focus);
+  --color-accent-solid: #0752E8;
+  --color-positive: var(--desk-positive);
+  --color-caution: var(--desk-caution);
+  --color-negative: var(--desk-negative);
+}
+
+@layer base {
+  :root {
+    --font-sans: 'Inter', 'IBM Plex Sans Thai', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-display: var(--font-sans);
+    --font-mono: 'JetBrains Mono', 'IBM Plex Sans Thai', ui-monospace, monospace;
+
+    color-scheme: light;
+    --desk-canvas: #FFFFFF;
+    --desk-panel: #FFFFFF;
+    --desk-subtle: #F4F7FC;
+    --desk-line: #E2E8F0;
+    --desk-ink: #09090B;
+    --desk-muted: #475569;
+    --desk-focus: #0752E8;
+    --desk-glass: rgba(255, 255, 255, 0.90);
+    --desk-specular: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    --desk-shadow: 0 16px 40px -32px rgba(7, 82, 232, 0.25);
+    --room-image: url('/assets/desk/trading-room-daylight.jpg');
+    --room-scrim: radial-gradient(ellipse at 66% 26%, rgba(255, 255, 255, 0.92), rgba(244, 247, 252, 0.98));
+    --desk-positive: #059669;
+    --desk-caution: #0752E8;
+    --desk-negative: #E11D48;
+  }
+
+  .dark {
+    color-scheme: dark;
+    --desk-canvas: #05070B;
+    --desk-panel: #0B0F17;
+    --desk-subtle: #111827;
+    --desk-line: rgba(148, 163, 184, 0.22);
+    --desk-ink: #FFFFFF;
+    --desk-muted: #CBD5E1;
+    --desk-focus: #3B82F6;
+    --desk-glass: rgba(8, 12, 22, 0.62);
+    --desk-specular: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+    --desk-shadow: 0 20px 54px -32px rgba(0, 0, 0, 0.85);
+    --room-image: url('/assets/desk/trading-room-night.jpg');
+    --room-scrim: radial-gradient(ellipse at 66% 26%, rgba(7, 82, 232, 0.16), rgba(4, 7, 16, 0.88));
+    --desk-positive: #34D399;
+    --desk-caution: #60A5FA;
+    --desk-negative: #FB7185;
+  }
+
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-padding-top: 64px;
+    font-variant-numeric: lining-nums tabular-nums;
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    background: var(--desk-canvas);
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  h1 {
+    letter-spacing: -0.03em;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  table, td, th, .tabular-nums, code, pre, .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+
+  code, pre, .font-mono {
+    font-family: var(--font-mono);
+  }
+}
+
+@layer components {
+  .tnx-room-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: var(--room-scrim), var(--room-image) center / cover no-repeat, var(--desk-canvas);
+    filter: saturate(0.25);
+  }
+
+  .tnx-navbar, .desk-panel {
+    background: var(--desk-panel);
+    box-shadow: var(--desk-specular), var(--desk-shadow);
+  }
+
+  @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .tnx-navbar, .desk-panel {
+      background: var(--desk-glass);
+      -webkit-backdrop-filter: blur(24px) saturate(160%);
+      backdrop-filter: blur(24px) saturate(160%);
+    }
+  }
+
+  .desk-panel {
+    min-width: 0;
+    border: 1px solid var(--desk-line);
+    border-radius: 24px;
+  }
+
+  .desk-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .45rem;
+    border-radius: .75rem;
+    background: #0752E8;
+    color: #FFFFFF;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .desk-primary:hover {
+    background: #0642BD;
+  }
+
+  .dark .desk-primary {
+    color: #FFFFFF;
+    background: linear-gradient(135deg, #2563EB, #0752E8);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.32), 0 6px 22px -6px rgba(7,82,232,.65);
+  }
+
+  .dark .desk-primary:hover {
+    background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+  }
+
+  .desk-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    min-width: 0;
+    gap: 2px;
+  }
+
+  .desk-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .375rem;
+    min-height: 2rem;
+    padding: .375rem .625rem;
+    border-bottom: 2px solid transparent;
+    color: var(--desk-muted);
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1.4;
+    cursor: pointer;
+  }
+
+  .desk-tab:hover {
+    color: var(--desk-ink);
+    background: var(--desk-subtle);
+  }
+
+  .desk-tab:is([aria-selected="true"], [aria-pressed="true"]) {
+    color: var(--desk-focus);
+    border-bottom-color: currentColor;
+  }
+}
+
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 2px solid var(--desk-focus);
+  outline-offset: 2px;
+}
+
+.perf-defer-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 560px;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.tnx-hero-surface {
+  position: relative;
+}
+
+.tnx-hero-label {
+  color: var(--desk-focus);
+  font-size: .8125rem;
+  font-weight: 650;
+}
+
+.tnx-hero-title {
+  font-family: 'IBM Plex Sans Thai', var(--font-sans);
+  font-size: clamp(2.45rem, 4.4vw, 4.25rem);
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: -.065em;
+  overflow-wrap: break-word;
+}
+
+[lang="th"] .tnx-hero-title {
+  letter-spacing: -.035em;
+  line-height: 1.24;
+}
+
+.tnx-hero-actions > a {
+  min-height: 3rem;
+  padding-inline: 1rem;
+  border-radius: .625rem;
+  font-size: .875rem;
+  text-align: center;
+}
+
+.tnx-hero-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--desk-line);
+  background: var(--desk-panel);
+  color: var(--desk-ink);
+  font-weight: 600;
+}
+
+.tnx-hero-secondary:hover { border-color: var(--desk-focus); }
+
+/* Shade the copy while leaving the room visible behind the preview. */
+.dark .tnx-hero-surface {
+  background: linear-gradient(100deg, rgba(5, 8, 15, .82), transparent 84%);
+}
+
+.tnx-hero-link {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  min-height: 2rem;
+  color: var(--desk-muted);
+  font-size: .75rem;
+  font-weight: 600;
+}
+
+.tnx-hero-link:hover { color: var(--desk-focus); }
+
+.tnx-choice-card {
+  border-color: var(--desk-line);
+  background: var(--desk-panel);
+}
+
+.tnx-choice-card:hover {
+  background: var(--desk-subtle);
+}
+
+.tnx-choice-card:is([aria-pressed="true"], [aria-selected="true"]) {
+  border-color: color-mix(in srgb, var(--desk-line) 68%, var(--desk-ink));
+  background: var(--desk-subtle);
+}
+
+@media (max-width: 27rem) {
+  .tnx-hero-actions > a { flex: 1 1 100%; }
+}
+
+/* Lightweight GPU-composited micro-animations replacing runtime JS motion library */
+@keyframes tnxFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes tnxPop {
+  from { opacity: 0; transform: translateY(var(--tnx-y, 8px)) scale(var(--tnx-s, 0.98)); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes tnxThemeIconIn {
+  from { opacity: 0; transform: scale(0.55) rotate(-60deg); }
+  to { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+.tnx-dropdown-in { --tnx-y: 6px; --tnx-s: 0.99; animation: tnxPop 140ms cubic-bezier(0.16, 1, 0.3, 1); }
+.tnx-pop-in { --tnx-y: 10px; --tnx-s: 0.92; animation: tnxPop 180ms ease-out; }
+.tnx-fade-up { --tnx-y: 12px; --tnx-s: 1; animation: tnxPop 280ms cubic-bezier(0.21, 0.47, 0.32, 0.98) both; }
+.tnx-modal-surface { --tnx-y: -8px; --tnx-s: 0.98; animation: tnxPop 160ms cubic-bezier(0.22, 1, 0.36, 1); }
+.tnx-modal-backdrop, .tnx-panel-reveal { animation: tnxFade 150ms ease-out; }
+.tnx-theme-icon-in { animation: tnxThemeIconIn 160ms cubic-bezier(0.22, 1, 0.36, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.tnx-dropdown-in, .tnx-theme-icon-in, .tnx-pop-in, .tnx-fade-up, .tnx-modal-backdrop, .tnx-modal-surface, .tnx-panel-reveal) {
+    animation: none !important;
+  }
+}
+
+/* View Transitions circular iris reveal & tactile orbital pulse for Light/Dark toggle */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 9998;
+}
+
+html.tnx-vt-active,
+html.tnx-vt-active body,
+html.tnx-vt-active body * {
+  transition-duration: 0ms !important;
+  transition-delay: 0ms !important;
+}
+
+.tnx-theme-wave-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.tnx-theme-halo-ring {
+  position: fixed;
+  left: var(--tnx-wave-x, 50vw);
+  top: var(--tnx-wave-y, 28px);
+  width: 72px;
+  height: 72px;
+  border-radius: 9999px;
+  transform: translate(-50%, -50%) scale(0.35);
+  animation: tnxHaloPulse 560ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.tnx-theme-wave-layer.is-to-dark .tnx-theme-halo-ring {
+  border: 1.5px solid rgba(59, 130, 246, 0.78);
+  box-shadow:
+    0 0 24px rgba(7, 82, 232, 0.48),
+    inset 0 0 14px rgba(226, 232, 240, 0.25);
+}
+
+.tnx-theme-wave-layer.is-to-light .tnx-theme-halo-ring {
+  border: 1.5px solid rgba(7, 82, 232, 0.75);
+  box-shadow:
+    0 0 24px rgba(7, 82, 232, 0.35),
+    inset 0 0 14px rgba(226, 232, 240, 0.35);
+}
+
+.tnx-theme-sweep-corona {
+  position: fixed;
+  left: var(--tnx-wave-x, 50vw);
+  top: var(--tnx-wave-y, 28px);
+  width: var(--tnx-wave-size, 1800px);
+  height: var(--tnx-wave-size, 1800px);
+  border-radius: 9999px;
+  transform: translate(-50%, -50%) scale(0);
+  animation: tnxSweepCorona 640ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.tnx-theme-wave-layer.is-to-dark .tnx-theme-sweep-corona {
+  border: 2px solid rgba(59, 130, 246, 0.45);
+  background: radial-gradient(
+    circle,
+    transparent 64%,
+    rgba(7, 82, 232, 0.16) 84%,
+    rgba(5, 7, 11, 0.28) 96%,
+    transparent 100%
+  );
+}
+
+.tnx-theme-wave-layer.is-to-light .tnx-theme-sweep-corona {
+  border: 2px solid rgba(7, 82, 232, 0.42);
+  background: radial-gradient(
+    circle,
+    transparent 64%,
+    rgba(255, 255, 255, 0.24) 84%,
+    rgba(7, 82, 232, 0.12) 96%,
+    transparent 100%
+  );
+}
+
+@keyframes tnxHaloPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.35);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.8);
+    opacity: 0;
+  }
+}
+
+@keyframes tnxSweepCorona {
+  0% {
+    transform: translate(-50%, -50%) scale(0.02);
+    opacity: 0.9;
+  }
+  70% {
+    opacity: 0.45;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.04);
+    opacity: 0;
+  }
+}
+
+/* Synchronized subtle cross-fade fallback when View Transitions API is unavailable */
+html.tredyn-theme-crossfade,
+html.tredyn-theme-crossfade body,
+html.tredyn-theme-crossfade body *:not(canvas) {
+  transition-property: background-color, color, border-color, fill, stroke;
+  transition-duration: 380ms;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.tredyn-theme-crossfade,
+  html.tredyn-theme-crossfade body,
+  html.tredyn-theme-crossfade body *:not(canvas) {
+    transition-duration: 0ms;
+  }
+  .tnx-theme-wave-layer {
+    display: none;
+  }
+}
+
+/* Smooth subtle micro-dissolve on EN / TH switch (preserves WebGL & scroll state) */
+@keyframes tnxLangDissolve {
+  0% {
+    opacity: 0.72;
+    transform: translateY(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+html.tnx-lang-crossfade main {
+  animation: tnxLangDissolve 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.tnx-lang-crossfade main {
+    animation: none;
+  }
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45);
+}
+
+/* Keep the page actions in the footer until the outer margin fits both buttons. */
+.desk-utilities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--desk-line);
+}
+
+.desk-utility-button {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding-inline: .75rem;
+  border: 1px solid var(--desk-line);
+  border-radius: 4px;
+  color: var(--desk-ink);
+  background: var(--desk-panel);
+  font-size: .75rem;
+  cursor: pointer;
+}
+
+.desk-utility-button:hover {
+  border-color: var(--desk-focus);
+}
+
+@media (min-width: 88rem) {
+  .desk-utilities {
+    position: fixed;
+    right: 12px;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    z-index: 30;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .desk-utility-button {
+    width: 2.5rem;
+    padding: 0;
+  }
+}
+
+@media (max-width: 40rem) {
+  .proof-ledger {
+    table-layout: fixed;
+    overflow-wrap: anywhere;
+  }
+
+  .proof-ledger :is(th, td) {
+    padding-inline: .2rem;
+    font-size: .6875rem;
+  }
+
+  .proof-ledger :first-child:is(th, td) {
+    width: 24%;
+    padding-left: 0;
+  }
+}
+
+:lang(th):is(h1, h2, h3) {
+  line-height: 1.35;
+  letter-spacing: normal;
+}

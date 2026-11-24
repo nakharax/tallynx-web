@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security Vulnerability Disclosure
+    url: https://github.com/nakharax/tallynx-web/security/advisories/new
+    about: Privately report a security vulnerability in accordance with SECURITY.md
+  - name: Contributing Guidelines
+    url: https://github.com/nakharax/tallynx-web/blob/master/CONTRIBUTING.md
+    about: Read branch naming, Conventional Commits, and local CI gate instructions

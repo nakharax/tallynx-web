@@ -1,0 +1,60 @@
+name: Feature Request
+description: Propose a new portal capability, risk sandbox improvement, or UX enhancement for TallyNX Web
+title: "feat: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Suggest an improvement to **TallyNX Web**.
+        Remember: TallyNX is strictly a **non-custodial, analytical & behavioral risk management platform**. Proposals for trade signals or automated order execution are out of scope.
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Target Area
+      options:
+        - Interactive Risk Sandbox
+        - Desk Handoff / Deep Links
+        - SSR / SEO / Performance
+        - Bilingual EN / TH Content & UX
+        - Documentation / Governance / CI
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What user workflow or educational pain point does this solve?
+      placeholder: Describe the problem or limitation...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Describe the feature, UX flow, or technical approach you have in mind.
+      placeholder: Describe how this should work...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Optional workarounds or alternative designs you evaluated.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: compliance
+    attributes:
+      label: Safe Harbor & Non-Custodial Alignment
+      options:
+        - label: This proposal stays strictly non-custodial (no fund custody, no broker credentials, no automated order execution).
+          required: true
+        - label: This proposal is analytical/educational only (no trade signals, financial advice, or outcome promises).
+          required: true

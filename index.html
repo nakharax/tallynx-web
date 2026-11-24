@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en" class="scroll-smooth js-enabled dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TallyNX | MT5 Risk Shield and Statement Autopsy</title>
+    <meta name="description" content="Check lot size against your daily loss limit in 10 seconds. Audit MT5 statements for post-stop trades and the 40% best-day threshold in 30 seconds." />
+    <link rel="canonical" href="https://tallynx.com/" />
+    <meta property="og:site_name" content="TallyNX Trading OS" />
+    <meta property="og:title" content="TallyNX | MT5 Risk Shield and Statement Autopsy" />
+    <meta property="og:description" content="Check lot size against your daily loss limit in 10 seconds. Audit MT5 statements for post-stop trades and the 40% best-day threshold in 30 seconds." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://tallynx.com/" />
+    <meta property="og:image" content="/og-share.jpg" />
+    <meta property="og:image:alt" content="TallyNX trading risk tools" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="TallyNX | MT5 Risk Shield and Statement Autopsy" />
+    <meta name="twitter:description" content="Check lot size against your daily loss limit in 10 seconds. Audit MT5 statements for post-stop trades and the 40% best-day threshold in 30 seconds." />
+    <meta name="twitter:image" content="/og-share.jpg" />
+    <meta name="theme-color" content="#05070B" />
+    <meta name="apple-mobile-web-app-title" content="TallyNX" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <script id="tredyn-structured-data" type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "TallyNX Trading OS",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "All",
+        "description": "Check lot size against your daily loss limit in 10 seconds. Audit MT5 statements for post-stop trades and the 40% best-day threshold in 30 seconds.",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        }
+      }
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" type="image/png" href="/pwa-192x192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="dns-prefetch" href="//mall.tallynx.com" />
+    <link rel="dns-prefetch" href="//desk.tallynx.com" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    </noscript>
+    <script>
+      try {
+        var requestedTheme = new URLSearchParams(window.location.search).get('theme');
+        requestedTheme = requestedTheme && requestedTheme.trim().toLowerCase();
+        var theme = requestedTheme === 'light' || requestedTheme === 'dark'
+          ? requestedTheme
+          : localStorage.getItem('tredyn.theme.v7');
+        var dark = theme !== 'light';
+        document.documentElement.classList.toggle('dark', dark);
+        document.querySelector('meta[name="theme-color"]').content = dark ? '#05070B' : '#FFFFFF';
+      } catch (e) {}
+    </script>
+  </head>
+  <body class="bg-canvas text-ink antialiased selection:bg-focus/25 selection:text-ink">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

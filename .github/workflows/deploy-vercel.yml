@@ -1,0 +1,310 @@
+name: Tredyn Web CI & Production Release
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+    branches:
+      - master
+  workflow_dispatch:
+
+# Fork-PR safe default: all verification jobs run with read-only permissions and zero secrets.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+jobs:
+  # Gate 1: Secret Scan (Gitleaks v8.24.3 verified via SHA-256 checksum)
+  secret-scan:
+    name: Secret Scan (Gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Gitleaks (SHA-256 verified binary)
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=8.24.3
+          ARCHIVE="gitleaks_${VERSION}_linux_x64.tar.gz"
+          TMP_DIR="$(mktemp -d)"
+          trap 'rm -rf "$TMP_DIR"' EXIT
+          BASE_URL="https://github.com/gitleaks/gitleaks/releases/download/v${VERSION}"
+          curl --fail --silent --show-error --location --retry 3 --connect-timeout 10 --max-time 180 \
+            --output "$TMP_DIR/$ARCHIVE" "$BASE_URL/$ARCHIVE"
+          curl --fail --silent --show-error --location --retry 3 --connect-timeout 10 --max-time 90 \
+            --output "$TMP_DIR/gitleaks_${VERSION}_checksums.txt" "$BASE_URL/gitleaks_${VERSION}_checksums.txt"
+          (cd "$TMP_DIR" && grep -E "[[:space:]]${ARCHIVE}$" "gitleaks_${VERSION}_checksums.txt" | sha256sum --check --status -)
+          tar -xzf "$TMP_DIR/$ARCHIVE" -C "$TMP_DIR" gitleaks
+          "$TMP_DIR/gitleaks" dir . --config .gitleaks.toml --redact --exit-code 1 --verbose
+
+  # Gate 2: Draft PR Gate (master pushes never defer)
+  ci-gate:
+    name: CI Execution Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run_heavy: ${{ steps.gate.outputs.run_heavy }}
+    steps:
+      - id: gate
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          PR_LABELS_JSON: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          set -euo pipefail
+          run_heavy=true
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            if [ "${PR_DRAFT:-false}" = "true" ] && [ "$EVENT_ACTION" != "ready_for_review" ]; then
+              if ! printf '%s' "$PR_LABELS_JSON" | grep -Eq 'ci:run|ci:full'; then
+                run_heavy=false
+              fi
+            fi
+          fi
+          echo "run_heavy=${run_heavy}" >> "$GITHUB_OUTPUT"
+
+  # Gate 3: Legal Safe Harbor & Brand Hygiene
+  policy-audit:
+    name: Safe Harbor & Brand Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [ci-gate]
+    if: needs.ci-gate.outputs.run_heavy == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run Tredyn Web Policy Guard
+        run: node scripts/ci-policy-guard.mjs
+
+  # Gate 4: Typecheck, Unit Tests & Vite Build
+  verify-and-build:
+    name: Typecheck, Tests & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [ci-gate]
+    if: needs.ci-gate.outputs.run_heavy == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run lint
+      - name: Run Unit Tests
+        run: npm test
+      - name: Verify Production Vite Build
+        run: npm run build
+
+  # Gate 5: Sentinel Fail-Closed Receipt
+  sentinel-ci:
+    name: sentinel-ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: always()
+    needs: [secret-scan, ci-gate, policy-audit, verify-and-build]
+    steps:
+      - name: Evaluate Deterministic Sentinel Receipt
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_DRAFT: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft || 'false' }}
+          RUN_HEAVY: ${{ needs.ci-gate.outputs.run_heavy }}
+          SECRET_SCAN: ${{ needs.secret-scan.result }}
+          POLICY_AUDIT: ${{ needs.policy-audit.result }}
+          VERIFY_BUILD: ${{ needs.verify-and-build.result }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          node -e '
+            const fs = require("fs");
+            const e = process.env;
+            const errors = [];
+            if (e.SECRET_SCAN !== "success") errors.push("secret-scan did not succeed: " + e.SECRET_SCAN);
+            if (e.EVENT_NAME !== "pull_request" && e.RUN_HEAVY !== "true") errors.push("non-PR runs must not defer heavy checks");
+            if (e.RUN_HEAVY === "true") {
+              if (e.POLICY_AUDIT !== "success") errors.push("policy-audit did not succeed: " + e.POLICY_AUDIT);
+              if (e.VERIFY_BUILD !== "success") errors.push("verify-and-build did not succeed: " + e.VERIFY_BUILD);
+            } else if (e.PR_DRAFT !== "true") {
+              errors.push("non-draft PR cannot defer heavy checks");
+            }
+            const receipt = {
+              repo: "tredyn-web",
+              sha: e.SHA,
+              event: e.EVENT_NAME,
+              approved: errors.length === 0,
+              checks: {
+                secret_scan: e.SECRET_SCAN,
+                policy_audit: e.POLICY_AUDIT,
+                verify_and_build: e.VERIFY_BUILD,
+              },
+              errors,
+              evaluatedAt: new Date().toISOString(),
+            };
+            fs.writeFileSync("sentinel-ci-receipt.json", JSON.stringify(receipt, null, 2));
+            console.log(JSON.stringify(receipt, null, 2));
+            if (errors.length > 0) process.exit(1);
+          '
+      - name: Upload Sentinel Audit Receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-ci-receipt
+          path: sentinel-ci-receipt.json
+          retention-days: 14
+
+  # PR Preview Deployment (safe non-fork PRs after Sentinel approval; secrets scoped to this job only)
+  deploy-preview:
+    name: Deploy PR Preview to Vercel
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [ci-gate, sentinel-ci]
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.fork == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      needs.ci-gate.outputs.run_heavy == 'true' &&
+      needs.sentinel-ci.result == 'success'
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Install Vercel CLI
+        run: npm install -g vercel@65.16.0
+      - name: Verify Vercel CLI Token
+        id: vercel_auth
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLEAN_TOKEN="$(printf '%s' "${VERCEL_TOKEN:-}" | tr -d '\r\n[:space:]')"
+          if [ -z "$CLEAN_TOKEN" ] || ! vercel whoami --token "$CLEAN_TOKEN" >/dev/null 2>&1; then
+            echo "::warning::VERCEL_TOKEN secret is unset or invalid; skipping CLI PR preview deploy (native Vercel GitHub App handles PR previews). Refresh VERCEL_TOKEN before merging to master: gh secret set VERCEL_TOKEN --repo nakharax/tallynx-web"
+            echo "### PR Preview CLI Deploy Skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "- \`VERCEL_TOKEN\` is unset or expired; native Vercel GitHub App preview remains active." >> "$GITHUB_STEP_SUMMARY"
+            echo "- Action required before \`master\` merge: refresh \`VERCEL_TOKEN\` via \`gh secret set VERCEL_TOKEN --repo nakharax/tallynx-web\`." >> "$GITHUB_STEP_SUMMARY"
+            echo "valid=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "valid=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Pull Preview Config & Build
+        if: steps.vercel_auth.outputs.valid == 'true'
+        run: |
+          set -euo pipefail
+          VERCEL_TOKEN="$(printf '%s' "${VERCEL_TOKEN:-}" | tr -d '\r\n[:space:]')"
+          export VERCEL_ORG_ID="$(printf '%s' "${VERCEL_ORG_ID:-}" | tr -d '\r\n[:space:]')"
+          export VERCEL_PROJECT_ID="$(printf '%s' "${VERCEL_PROJECT_ID:-}" | tr -d '\r\n[:space:]')"
+          vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+          vercel build --token="$VERCEL_TOKEN"
+      - name: Deploy Preview Bundle
+        id: preview
+        if: steps.vercel_auth.outputs.valid == 'true'
+        run: |
+          set -euo pipefail
+          VERCEL_TOKEN="$(printf '%s' "${VERCEL_TOKEN:-}" | tr -d '\r\n[:space:]')"
+          export VERCEL_ORG_ID="$(printf '%s' "${VERCEL_ORG_ID:-}" | tr -d '\r\n[:space:]')"
+          export VERCEL_PROJECT_ID="$(printf '%s' "${VERCEL_PROJECT_ID:-}" | tr -d '\r\n[:space:]')"
+          GIT_BACKUP="$(mktemp -d)"
+          mv .git "$GIT_BACKUP/.git"
+          trap 'mv "$GIT_BACKUP/.git" .git 2>/dev/null || true; rm -rf "$GIT_BACKUP"' EXIT
+          URL=$(vercel deploy --prebuilt --yes --token="$VERCEL_TOKEN")
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+      - name: Post Preview URL on PR
+        if: steps.vercel_auth.outputs.valid == 'true'
+        uses: actions/github-script@v7
+        env:
+          PREVIEW_URL: ${{ steps.preview.outputs.url }}
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `✅ **Sentinel CI Passed** — TallyNX Web Preview deployed:\n${process.env.PREVIEW_URL}`
+            });
+
+  # Gate 6: Production Release on Master Merge + Post-Deploy Smoke Check (secrets scoped to this job only)
+  deploy-production:
+    name: Deploy Master to Vercel Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    concurrency:
+      group: vercel-prod-${{ github.repository }}
+      cancel-in-progress: false
+    needs: [sentinel-ci]
+    if: >-
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+      github.ref == 'refs/heads/master' &&
+      needs.sentinel-ci.result == 'success'
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Vercel CLI
+        run: npm install -g vercel@65.16.0
+      - name: Deploy to Vercel Production
+        id: deploy
+        run: |
+          set -euo pipefail
+          VERCEL_TOKEN="$(printf '%s' "${VERCEL_TOKEN:-}" | tr -d '\r\n[:space:]')"
+          export VERCEL_ORG_ID="$(printf '%s' "${VERCEL_ORG_ID:-}" | tr -d '\r\n[:space:]')"
+          export VERCEL_PROJECT_ID="$(printf '%s' "${VERCEL_PROJECT_ID:-}" | tr -d '\r\n[:space:]')"
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::VERCEL_TOKEN Actions secret is empty."
+            exit 1
+          fi
+          if ! WHOAMI_OUT=$(vercel whoami --token "$VERCEL_TOKEN" 2>&1); then
+            echo "::error::Vercel authentication failed (vercel whoami): $WHOAMI_OUT"
+            echo "Hint: Create a Full Account or team-scoped Account Token at https://vercel.com/account/tokens and set it cleanly without trailing newlines in both repo and 'production' environment secrets."
+            exit 1
+          fi
+          echo "Authenticated to Vercel as: $WHOAMI_OUT"
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vercel build --prod --token="$VERCEL_TOKEN"
+          # Hide .git during prebuilt upload so Vercel deploys under the maintainer's VERCEL_TOKEN
+          # without blocking external OSS contributor commit authors (TEAM_ACCESS_REQUIRED).
+          GIT_BACKUP="$(mktemp -d)"
+          mv .git "$GIT_BACKUP/.git"
+          trap 'mv "$GIT_BACKUP/.git" .git 2>/dev/null || true; rm -rf "$GIT_BACKUP"' EXIT
+          URL=$(vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN")
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+      - name: Post-Deploy Verification & Receipt
+        run: |
+          set -euo pipefail
+          URL="${{ steps.deploy.outputs.url }}"
+          STATUS_CODE=$(curl --fail --silent --show-error --output /dev/null --write-out "%{http_code}" --max-time 15 "https://tallynx.com/api/health")
+          echo "Live HTTP check https://tallynx.com/api/health -> $STATUS_CODE"
+          test "$STATUS_CODE" = 200
+          echo "### TallyNX Web Production Release Receipt" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Deployment URL:** $URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Production Domain:** https://tallynx.com (HTTP $STATUS_CODE)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Commit:** \`${{ github.sha }}\`" >> "$GITHUB_STEP_SUMMARY"

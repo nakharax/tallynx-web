@@ -1,0 +1,25 @@
+# Tredyn Web — Gitleaks secret scanning policy
+title = "Tredyn Web gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known non-secret templates, lockfile integrity hashes, and build artifacts"
+
+paths = [
+  '''\.env\.example$''',
+  '''package-lock\.json$''',
+  '''^\.gitleaks\.toml$''',
+  '''^dist/''',
+  '''^node_modules/''',
+  '''^\.vercel/''',
+  '''^scripts/ci-policy-guard\.mjs$''',
+]
+
+regexTargets = ["match"]
+regexes = [
+  '''(your_api_key|your-api-key|test-mock-key|placeholder)''',
+  # Truncated synthetic UI documentation example keys in ColumnDeveloperConsole.tsx and ColumnHeroConsole.tsx
+  '''td_live_(38294a91fbc|7x9Q81mk)''',
+]

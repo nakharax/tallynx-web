@@ -1,0 +1,105 @@
+name: PR Hygiene & Policy Pre-Check
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+    branches:
+      - master
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: pr-hygiene-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-hygiene:
+    name: Conventional PR Title & Diff Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate Conventional Commit PR Title
+        shell: bash
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+          node -e '
+            const title = (process.env.PR_TITLE || "").trim();
+            const pattern = /^(feat|fix|perf|refactor|docs|test|chore|ci|build|style|revert)(\([a-z0-9._/-]+\))?!?: .{3,}$/;
+            if (!pattern.test(title)) {
+              console.error(`::error::Invalid PR title: "${title}"`);
+              console.error("Expected Conventional Commit format: <type>(<optional-scope>): <summary>");
+              console.error("Allowed types: feat, fix, perf, refactor, docs, test, chore, ci, build, style, revert");
+              console.error("Example: feat(sandbox): add drawdown buffer preset selector");
+              process.exit(1);
+            }
+            console.log(`PASS: PR title follows Conventional Commits -> "${title}"`);
+          '
+
+      - name: Inspect PR Size & Sensitive Paths
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              per_page: 100,
+            });
+
+            const ignoredForSize = new Set(['package-lock.json', 'bun.lock']);
+            let effectiveChanges = 0;
+            let effectiveFiles = 0;
+            const sensitivePrefixes = [
+              '.github/',
+              'scripts/',
+              'server.ts',
+              'api/',
+              'vercel.json',
+              'SECURITY.md',
+            ];
+            const touchedSensitive = [];
+
+            for (const f of files) {
+              if (!ignoredForSize.has(f.filename) && !f.filename.startsWith('dist/')) {
+                effectiveFiles += 1;
+                effectiveChanges += (f.additions || 0) + (f.deletions || 0);
+              }
+              if (sensitivePrefixes.some((p) => f.filename === p || f.filename.startsWith(p))) {
+                touchedSensitive.push(f.filename);
+              }
+            }
+
+            const summaryLines = [
+              '### PR Hygiene Summary',
+              `- **Conventional Title:** \`${context.payload.pull_request.title}\``,
+              `- **Files Changed (excluding lockfiles):** ${effectiveFiles}`,
+              `- **Lines Changed (excluding lockfiles):** ${effectiveChanges}`,
+            ];
+
+            if (effectiveChanges > 800 || effectiveFiles > 30) {
+              core.warning(
+                `Large PR detected (${effectiveFiles} files, ${effectiveChanges} lines). Consider splitting into smaller reviewable PRs.`
+              );
+              summaryLines.push(
+                '- **Size Warning:** Large diff detected (>800 lines or >30 files). Consider splitting if feasible.'
+              );
+            } else {
+              summaryLines.push('- **Size Check:** Within recommended reviewable bounds.');
+            }
+
+            if (touchedSensitive.length > 0) {
+              core.warning(
+                `Sensitive paths modified (${touchedSensitive.length} file(s)): ${touchedSensitive.join(', ')}. Owner review (@nakharax) required.`
+              );
+              summaryLines.push(
+                `- **Sensitive Paths Touched (${touchedSensitive.length}):** ${touchedSensitive.map((p) => `\`${p}\``).join(', ')}`
+              );
+            } else {
+              summaryLines.push('- **Sensitive Paths:** None touched.');
+            }
+
+            await core.summary.addRaw(summaryLines.join('\n') + '\n').write();

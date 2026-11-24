@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Build & Generated Outputs
+build/
+dist/
+dev-dist/
+coverage/
+*.tsbuildinfo
+api/ssr-shell.html
+api/server.bundle.js
+
+# Local Environment & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*serviceAccount*
+
+# Platform & CI Artifacts
+.vercel/
+.DS_Store
+Thumbs.db
+*.log
+*.zip
+*.db
+*.sqlite
+*.sqlite3
+sentinel-ci-receipt.json
+release-manifest.json
+SHA256SUMS.txt
+
+.vercel
+.env*

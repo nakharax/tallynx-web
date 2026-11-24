@@ -1,0 +1,13 @@
+# TallyNX Web — Code Owners
+# All pull requests require owner review before merging to master.
+
+# Default owner for the entire repository
+* @nakharax
+
+# High-sensitivity infrastructure, SSR, CI/CD, and governance paths
+/.github/ @nakharax
+/scripts/ @nakharax
+/server.ts @nakharax
+/api/ @nakharax
+/vercel.json @nakharax
+/SECURITY.md @nakharax

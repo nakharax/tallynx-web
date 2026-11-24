@@ -1,0 +1,6 @@
+{
+  "name": "TallyNX Trading OS",
+  "description": "Check lot size against your daily loss limit in 10 seconds. Audit MT5 statements for post-stop trades and the 40% best-day threshold in 30 seconds.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

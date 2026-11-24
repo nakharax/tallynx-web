@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Run Gitleaks (SHA-256 verified binary)
         shell: bash
         run: |
@@ -78,8 +78,8 @@ jobs:
     needs: [ci-gate]
     if: needs.ci-gate.outputs.run_heavy == 'true'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
       - name: Run Tredyn Web Policy Guard
@@ -93,8 +93,8 @@ jobs:
     needs: [ci-gate]
     if: needs.ci-gate.outputs.run_heavy == 'true'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -158,7 +158,7 @@ jobs:
           '
       - name: Upload Sentinel Audit Receipt
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sentinel-ci-receipt
           path: sentinel-ci-receipt.json
@@ -184,8 +184,8 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -231,7 +231,7 @@ jobs:
           echo "url=$URL" >> "$GITHUB_OUTPUT"
       - name: Post Preview URL on PR
         if: steps.vercel_auth.outputs.valid == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           PREVIEW_URL: ${{ steps.preview.outputs.url }}
         with:
@@ -262,8 +262,8 @@ jobs:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm

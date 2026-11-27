@@ -18,6 +18,7 @@ import {
   shouldForceSkeletonFromSearch,
 } from './utils/navLogic';
 import { SeoHeadManager } from './components/SeoHeadManager';
+import { SiteTrafficStrip } from './components/SiteTrafficStrip';
 import {
   type DeskPage,
   OnboardingTransferState,
@@ -575,6 +576,7 @@ export default function App() {
               <p className="mt-4 text-xs leading-relaxed">{t.footer.legalText}</p>
             </section>
           </div>
+          <SiteTrafficStrip lang={lang} />
         </footer>
 
         <div className="desk-utilities">

@@ -29,6 +29,7 @@ import {
   buildCrossSubdomainSsoUrl,
   normalizeTraderHandle,
 } from './src/utils/tallynxEcosystemLogic.js';
+import { createSiteTrafficRouter } from './server/siteTraffic.js';
 
 dotenv.config();
 
@@ -189,6 +190,8 @@ app.post(['/api/advisor', '/api/chat'], async (req, res) => {
 });
 
 // Telemetry & Health endpoint
+app.use('/api', createSiteTrafficRouter({ defaultSite: 'web' }));
+
 app.get('/api/health', (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
   res.json({

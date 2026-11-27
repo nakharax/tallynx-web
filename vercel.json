@@ -45,6 +45,6 @@
     { "source": "/api/(.*)", "destination": "/api/index" },
     { "source": "/robots.txt", "destination": "/api/index" },
     { "source": "/sitemap.xml", "destination": "/api/index" },
-    { "source": "/((?!assets/|favicon|og-share|manifest|.*\\.).*)", "destination": "/api/index" }
+    { "source": "/((?!_vercel/|assets/|favicon|og-share|manifest|.*\\.).*)", "destination": "/api/index" }
   ]
 }

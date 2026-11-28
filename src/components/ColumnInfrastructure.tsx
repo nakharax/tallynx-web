@@ -9,6 +9,7 @@ interface ColumnInfrastructureProps {
 export const ColumnInfrastructure: React.FC<ColumnInfrastructureProps> = ({ lang = 'en' }) => {
   const [activeTab, setActiveTab] = useState<'comparison' | 'bridge'>('comparison');
   const t = getDictionary(lang).infrastructure;
+  const isTh = lang === 'th';
 
   return (
     <section id="architecture" className="py-12 sm:py-16">
@@ -81,16 +82,28 @@ export const ColumnInfrastructure: React.FC<ColumnInfrastructureProps> = ({ lang
 
               <ol className="mt-6 divide-y divide-[#D6D1C7] border-y border-[#D6D1C7] dark:divide-neutral-800 dark:border-neutral-800 font-mono text-xs">
                 <li className="flex items-center justify-between py-3 gap-3">
-                  <span className="text-[#141618] dark:text-neutral-300">01. Trader Input</span>
-                  <span className="text-[#2B2D2F] dark:text-neutral-400">Requires broker password</span>
+                  <span className="text-[#141618] dark:text-neutral-300">
+                    {isTh ? '01. ข้อมูลบัญชีเทรดเดอร์' : '01. Trader Input'}
+                  </span>
+                  <span className="text-[#2B2D2F] dark:text-neutral-400 text-right">
+                    {isTh ? 'ต้องกรอกรหัสผ่านโบรเกอร์' : 'Requires broker password'}
+                  </span>
                 </li>
                 <li className="flex items-center justify-between py-3 gap-3">
-                  <span className="font-semibold text-rose-700 dark:text-rose-300">02. 3rd Party Cloud Bot</span>
-                  <span className="text-rose-600 dark:text-rose-400">Remote execution risk</span>
+                  <span className="font-semibold text-rose-700 dark:text-rose-300">
+                    {isTh ? '02. บอทคลาวด์ภายนอก' : '02. 3rd Party Cloud Bot'}
+                  </span>
+                  <span className="text-rose-600 dark:text-rose-400 text-right">
+                    {isTh ? 'เสี่ยงถูกสั่งปิด/เปิดออเดอร์จากระยะไกล' : 'Remote execution risk'}
+                  </span>
                 </li>
                 <li className="flex items-center justify-between py-3 gap-3">
-                  <span className="text-[#141618] dark:text-neutral-300">03. Multi-IP Execution</span>
-                  <span className="text-[#2B2D2F] dark:text-neutral-400">Flags prop firm audits</span>
+                  <span className="text-[#141618] dark:text-neutral-300">
+                    {isTh ? '03. ส่งคำสั่งผ่าน IP ร่วม' : '03. Multi-IP Execution'}
+                  </span>
+                  <span className="text-[#2B2D2F] dark:text-neutral-400 text-right">
+                    {isTh ? 'เสี่ยงโดนตรวจจับกฎ Prop Firm' : 'Flags prop firm audits'}
+                  </span>
                 </li>
               </ol>
 
@@ -120,16 +133,28 @@ export const ColumnInfrastructure: React.FC<ColumnInfrastructureProps> = ({ lang
 
               <ol className="mt-6 divide-y divide-[#D6D1C7] border-y border-[#D6D1C7] dark:divide-neutral-800 dark:border-neutral-800 font-mono text-xs">
                 <li className="flex items-center justify-between py-3 gap-3">
-                  <span className="font-semibold text-[#141618] dark:text-white">01. Human Trader</span>
-                  <span className="text-[#2B2D2F] dark:text-neutral-400">Sets daily caps & rules</span>
+                  <span className="font-semibold text-[#141618] dark:text-white">
+                    {isTh ? '01. เทรดเดอร์กำหนดกรอบเอง' : '01. Human Trader'}
+                  </span>
+                  <span className="text-[#2B2D2F] dark:text-neutral-400 text-right">
+                    {isTh ? 'ตั้งเพดานรายวันและกติกาเอง' : 'Sets daily caps & rules'}
+                  </span>
                 </li>
                 <li className="flex items-center justify-between py-3 gap-3">
-                  <span className="font-semibold text-[#00c07a]">02. Local EA Bridge (Read-Only)</span>
-                  <span className="text-[#00c07a]">&lt; 1.4s lag · 0 custody</span>
+                  <span className="font-semibold text-[#00c07a]">
+                    {isTh ? '02. Local EA Bridge (อ่านอย่างเดียว)' : '02. Local EA Bridge (Read-Only)'}
+                  </span>
+                  <span className="text-[#00c07a] text-right">
+                    {isTh ? 'หน่วง < 1.4 วิ · ไม่ถือเงิน' : '< 1.4s lag · 0 custody'}
+                  </span>
                 </li>
                 <li className="flex items-center justify-between py-3 gap-3">
-                  <span className="font-semibold text-[#141618] dark:text-white">03. Local MT5 Native Server</span>
-                  <span className="text-[#00c07a]">100% Native IP</span>
+                  <span className="font-semibold text-[#141618] dark:text-white">
+                    {isTh ? '03. เทอร์มินัล MT5 บนเครื่องคุณ' : '03. Local MT5 Native Server'}
+                  </span>
+                  <span className="text-[#00c07a] text-right">
+                    {isTh ? 'IP เครื่องคุณ 100%' : '100% Native IP'}
+                  </span>
                 </li>
               </ol>
 
@@ -152,14 +177,18 @@ export const ColumnInfrastructure: React.FC<ColumnInfrastructureProps> = ({ lang
               <div>
                 <div className="flex items-center space-x-2 text-[#141618] dark:text-white">
                   <Terminal className="h-4 w-4 text-focus" />
-                  <h4 className="text-sm font-bold">01. Local Polling</h4>
+                  <h4 className="text-sm font-bold">
+                    {isTh ? '01. อ่านข้อมูลภายในเครื่อง (Local Polling)' : '01. Local Polling'}
+                  </h4>
                 </div>
                 <p className="mt-2.5 text-xs text-[#2B2D2F] dark:text-neutral-400 leading-relaxed">
-                  A compact MQL5 Expert Advisor queries AccountInfoDouble(ACCOUNT_BALANCE) and AccountInfoDouble(ACCOUNT_EQUITY) locally on every tick.
+                  {isTh
+                    ? 'ตัวช่วย MQL5 EA ขนาดเล็กจะอ่านค่า AccountInfoDouble(ACCOUNT_BALANCE) และ AccountInfoDouble(ACCOUNT_EQUITY) ในเครื่องของคุณโดยตรงทุก Tick แล้วส่งเฉพาะข้อมูลสถานะแบบอ่านอย่างเดียวไปยัง TallyNX Desk'
+                    : 'A compact MQL5 Expert Advisor queries AccountInfoDouble(ACCOUNT_BALANCE) and AccountInfoDouble(ACCOUNT_EQUITY) locally on every tick and pushes read-only snapshots to TallyNX Desk.'}
                 </p>
               </div>
               <div className="mt-5 pt-3 border-t border-[#D6D1C7] dark:border-neutral-800 font-mono text-[11px] text-[#2B2D2F] dark:text-neutral-400">
-                Tick lag: ~12ms · RAM: &lt; 8MB
+                {isTh ? 'ความหน่วง Tick: ~12ms · แรม: < 8MB' : 'Tick lag: ~12ms · RAM: < 8MB'}
               </div>
             </div>
 
@@ -167,14 +196,18 @@ export const ColumnInfrastructure: React.FC<ColumnInfrastructureProps> = ({ lang
               <div>
                 <div className="flex items-center space-x-2 text-[#141618] dark:text-white">
                   <Cpu className="h-4 w-4 text-focus" />
-                  <h4 className="text-sm font-bold">02. Drawdown Alerts</h4>
+                  <h4 className="text-sm font-bold">
+                    {isTh ? '02. แจ้งเตือน Drawdown ล่วงหน้า' : '02. Drawdown Alerts'}
+                  </h4>
                 </div>
                 <p className="mt-2.5 text-xs text-[#2B2D2F] dark:text-neutral-400 leading-relaxed">
-                  The software compares floating loss with your daily cap and warns when drawdown rises quickly.
+                  {isTh
+                    ? 'ซอฟต์แวร์เปรียบเทียบขาดทุนลอยตัวกับเพดานรายวันของคุณ และแจ้งเตือนทันทีเมื่อ Drawdown เพิ่มขึ้นเร็วกว่าแผน โดยไม่มีสิทธิ์เปิด แก้ไข หรือปิดออเดอร์'
+                    : 'The software compares floating loss with your daily cap and warns when drawdown rises quickly — without any authority to open, modify, or close orders.'}
                 </p>
               </div>
               <div className="mt-5 pt-3 border-t border-[#D6D1C7] dark:border-neutral-800 font-mono text-[11px] text-[#2B2D2F] dark:text-neutral-400">
-                Read-only telemetry · 0 order rights
+                {isTh ? 'อ่านข้อมูลอย่างเดียว · ไม่มีสิทธิ์ส่งคำสั่ง (0 order rights)' : 'Read-only telemetry · 0 order rights'}
               </div>
             </div>
 
@@ -182,14 +215,18 @@ export const ColumnInfrastructure: React.FC<ColumnInfrastructureProps> = ({ lang
               <div>
                 <div className="flex items-center space-x-2 text-[#141618] dark:text-white">
                   <ShieldCheck className="h-4 w-4 text-[#00c07a]" />
-                  <h4 className="text-sm font-bold">03. Verifiable Ledger</h4>
+                  <h4 className="text-sm font-bold">
+                    {isTh ? '03. สมุดบันทึกที่ตรวจสอบย้อนหลังได้' : '03. Verifiable Ledger'}
+                  </h4>
                 </div>
                 <p className="mt-2.5 text-xs text-[#2B2D2F] dark:text-neutral-400 leading-relaxed">
-                  The ledger records every closed deal and session boundary in order. Use the session hash to check for later edits.
+                  {isTh
+                    ? 'สมุดบันทึกจะจัดเก็บรายการที่ปิดแล้วและขอบเขตแต่ละรอบเทรดตามลำดับ พร้อมค่าแฮช SHA-256 เพื่อช่วยตรวจสอบว่าไม่มีการแก้ไขข้อมูลย้อนหลัง'
+                    : 'The ledger records every closed deal and session boundary in order. Use the session hash to check for later edits.'}
                 </p>
               </div>
               <div className="mt-5 pt-3 border-t border-[#D6D1C7] dark:border-neutral-800 font-mono text-[11px] text-[#2B2D2F] dark:text-neutral-400">
-                SHA-256 session integrity check
+                {isTh ? 'ตรวจความถูกต้องด้วยแฮช SHA-256' : 'SHA-256 session integrity check'}
               </div>
             </div>
           </div>

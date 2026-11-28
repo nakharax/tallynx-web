@@ -449,8 +449,8 @@ export const LiveSandboxSection: React.FC<LiveSandboxSectionProps> = React.memo(
             {/* Non-Custodial Footer Note */}
             <div className="border-t border-hairline pt-4 text-[11px] leading-relaxed text-[#2B2D2F] dark:border-neutral-800 dark:text-neutral-400">
               {isTh
-                ? 'หมายเหตุขอบเขตระบบ: Sandbox ทำงานแบบอ่านอย่างเดียวในเบราว์เซอร์ เพื่อสาธิตสมการคุมความเสี่ยงของ TallyNX OS v4.0 โดยไม่ส่งคำสั่งจริง'
-                : 'Non-Custodial Boundary: This simulation models TallyNX OS v4.0 guardrails deterministically without executing or mirroring broker orders.'}
+                ? 'หมายเหตุขอบเขตระบบ: Sandbox ทำงานแบบอ่านอย่างเดียวในเบราว์เซอร์ เพื่อสาธิตสมการคุมความเสี่ยงของ TallyNX Desk v5.2 โดยไม่ส่งคำสั่งจริง'
+                : 'Non-Custodial Boundary: This simulation models TallyNX Desk v5.2 guardrails deterministically without executing or mirroring broker orders.'}
             </div>
           </div>
         </div>

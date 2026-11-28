@@ -15,7 +15,7 @@ api/server.bundle.js
 
 # Local Environment & Secrets
 .env
-.env.*
+.env*
 !.env.example
 *.pem
 *.key
@@ -33,6 +33,3 @@ Thumbs.db
 sentinel-ci-receipt.json
 release-manifest.json
 SHA256SUMS.txt
-
-.vercel
-.env*

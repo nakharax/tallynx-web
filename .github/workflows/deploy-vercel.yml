@@ -1,4 +1,4 @@
-name: Tredyn Web CI & Production Release
+name: TallyNX Web CI & Production Release
 
 on:
   push:
@@ -82,7 +82,7 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: "22"
-      - name: Run Tredyn Web Policy Guard
+      - name: Run TallyNX Web Policy Guard
         run: node scripts/ci-policy-guard.mjs
 
   # Gate 4: Typecheck, Unit Tests & Vite Build
@@ -140,7 +140,7 @@ jobs:
               errors.push("non-draft PR cannot defer heavy checks");
             }
             const receipt = {
-              repo: "tredyn-web",
+              repo: "tallynx-web",
               sha: e.SHA,
               event: e.EVENT_NAME,
               approved: errors.length === 0,

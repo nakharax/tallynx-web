@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight,
   ExternalLink,
@@ -43,6 +43,28 @@ export const InstantRiskCalculator: React.FC<InstantRiskCalculatorProps> = React
   compact = false,
 }) => {
   const isTh = lang === 'th';
+
+  const [accountDraft, setAccountDraft] = useState(() => String(transferState.accountSize));
+  const [riskDraft, setRiskDraft] = useState(() => String(transferState.riskPct));
+  const [slDraft, setSlDraft] = useState(() => String(transferState.slPips));
+
+  useEffect(() => {
+    setAccountDraft((prev) =>
+      Number(prev) === transferState.accountSize ? prev : String(transferState.accountSize)
+    );
+  }, [transferState.accountSize]);
+
+  useEffect(() => {
+    setRiskDraft((prev) =>
+      Number(prev) === transferState.riskPct ? prev : String(transferState.riskPct)
+    );
+  }, [transferState.riskPct]);
+
+  useEffect(() => {
+    setSlDraft((prev) =>
+      Number(prev) === transferState.slPips ? prev : String(transferState.slPips)
+    );
+  }, [transferState.slPips]);
 
   const plan = useMemo(
     () => calculateThreeTpLadderPlan(transferState),
@@ -168,15 +190,30 @@ export const InstantRiskCalculator: React.FC<InstantRiskCalculatorProps> = React
               id="calc-account-size"
               data-testid="calc-account-size-input"
               type="number"
+              inputMode="numeric"
               min={500}
               max={2000000}
               step={500}
-              value={transferState.accountSize}
-              onChange={(e) =>
-                updateField({
-                  accountSize: Math.max(500, Number(e.target.value) || 10000),
-                })
-              }
+              value={accountDraft}
+              onChange={(e) => {
+                const raw = e.target.value;
+                setAccountDraft(raw);
+                if (raw.trim() === '') return;
+                const parsed = Number(raw);
+                if (Number.isFinite(parsed) && parsed >= 500 && parsed <= 2000000) {
+                  updateField({ accountSize: parsed });
+                }
+              }}
+              onBlur={() => {
+                const parsed = Number(accountDraft);
+                const clamped = Number.isFinite(parsed) && parsed > 0
+                  ? Math.min(2000000, Math.max(500, Math.round(parsed)))
+                  : transferState.accountSize;
+                setAccountDraft(String(clamped));
+                if (clamped !== transferState.accountSize) {
+                  updateField({ accountSize: clamped });
+                }
+              }}
               className="min-h-10 w-full min-w-0 rounded border border-hairline bg-canvas px-3 py-2 font-mono text-base font-semibold text-ink focus:border-focus"
             />
             <div className="mt-2 grid grid-cols-4 gap-1.5">
@@ -184,7 +221,10 @@ export const InstantRiskCalculator: React.FC<InstantRiskCalculatorProps> = React
                 <button
                   key={preset}
                   type="button"
-                  onClick={() => updateField({ accountSize: preset })}
+                  onClick={() => {
+                    setAccountDraft(String(preset));
+                    updateField({ accountSize: preset });
+                  }}
                   className={`rounded py-1 font-mono text-[11px] font-semibold transition cursor-pointer ${
                     transferState.accountSize === preset
                       ? 'bg-accent-solid text-white'
@@ -210,15 +250,30 @@ export const InstantRiskCalculator: React.FC<InstantRiskCalculatorProps> = React
                 id="calc-risk-pct"
                 data-testid="calc-risk-pct-input"
                 type="number"
+                inputMode="decimal"
                 min={0.25}
                 max={5}
                 step={0.25}
-                value={transferState.riskPct}
-                onChange={(e) =>
-                  updateField({
-                    riskPct: Math.min(5, Math.max(0.25, Number(e.target.value) || 1)),
-                  })
-                }
+                value={riskDraft}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  setRiskDraft(raw);
+                  if (raw.trim() === '') return;
+                  const parsed = Number(raw);
+                  if (Number.isFinite(parsed) && parsed >= 0.25 && parsed <= 5) {
+                    updateField({ riskPct: parsed });
+                  }
+                }}
+                onBlur={() => {
+                  const parsed = Number(riskDraft);
+                  const clamped = Number.isFinite(parsed) && parsed > 0
+                    ? Math.min(5, Math.max(0.25, Math.round(parsed * 100) / 100))
+                    : transferState.riskPct;
+                  setRiskDraft(String(clamped));
+                  if (clamped !== transferState.riskPct) {
+                    updateField({ riskPct: clamped });
+                  }
+                }}
                 className="min-h-10 w-full min-w-0 rounded border border-hairline bg-canvas px-3 py-2 font-mono text-base font-semibold text-ink focus:border-focus"
               />
               <div className="mt-2 grid grid-cols-4 gap-1">
@@ -226,7 +281,10 @@ export const InstantRiskCalculator: React.FC<InstantRiskCalculatorProps> = React
                   <button
                     key={r}
                     type="button"
-                    onClick={() => updateField({ riskPct: r })}
+                    onClick={() => {
+                      setRiskDraft(String(r));
+                      updateField({ riskPct: r });
+                    }}
                     className={`rounded py-1 font-mono text-[10.5px] font-semibold transition cursor-pointer ${
                       transferState.riskPct === r
                         ? 'bg-[#141618] text-white dark:bg-white dark:text-[#141618]'
@@ -249,15 +307,30 @@ export const InstantRiskCalculator: React.FC<InstantRiskCalculatorProps> = React
               <input
                 id="calc-sl-pips"
                 type="number"
+                inputMode="numeric"
                 min={5}
                 max={500}
                 step={5}
-                value={transferState.slPips}
-                onChange={(e) =>
-                  updateField({
-                    slPips: Math.max(5, Number(e.target.value) || 25),
-                  })
-                }
+                value={slDraft}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  setSlDraft(raw);
+                  if (raw.trim() === '') return;
+                  const parsed = Number(raw);
+                  if (Number.isFinite(parsed) && parsed >= 5 && parsed <= 500) {
+                    updateField({ slPips: parsed });
+                  }
+                }}
+                onBlur={() => {
+                  const parsed = Number(slDraft);
+                  const clamped = Number.isFinite(parsed) && parsed > 0
+                    ? Math.min(500, Math.max(5, Math.round(parsed)))
+                    : transferState.slPips;
+                  setSlDraft(String(clamped));
+                  if (clamped !== transferState.slPips) {
+                    updateField({ slPips: clamped });
+                  }
+                }}
                 className="min-h-10 w-full min-w-0 rounded border border-hairline bg-canvas px-3 py-2 font-mono text-base font-semibold text-ink focus:border-focus"
               />
               <div className="mt-2 grid grid-cols-3 gap-1">

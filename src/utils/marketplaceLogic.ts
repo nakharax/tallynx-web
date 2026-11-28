@@ -89,18 +89,18 @@ export const DESK_IDEAS_CATALOG: DeskIdeaItem[] = [
     id: 'idea-ghr-prop-shield',
     title: 'London Open Gold 40%-Cap Prop Desk',
     creatorHandle: '@kavin.quant',
-    creatorRole: 'Verified Funded Trader',
+    creatorRole: 'Sample Blueprint Author',
     engineType: 'ghr-v32',
     engineLabel: ENGINE_LABELS['ghr-v32'],
     category: 'prop-challenge',
-    verificationMethod: 'mt5-investor-sync',
+    verificationMethod: 'cloud-api-sync',
     verificationProof: {
-      accountMask: 'MT5 #8849••15',
-      brokerServer: 'RawSpread-Live04',
-      ledgerHash: 'sha256:9f3a81e4...c210',
+      accountMask: 'Sample · MCP #8849••15',
+      brokerServer: 'FundedNext-MCP-ReadOnly',
+      ledgerHash: 'sample-blueprint:ghr-prop-shield',
       verifiedDealsCount: 184,
       trackingWindowDays: 92,
-      lastSyncedAt: '2026-11-14 07:42 UTC',
+      lastSyncedAt: 'Sample Blueprint Reference',
     },
     metrics: {
       maxDrawdownPct: 2.35,
@@ -114,7 +114,7 @@ export const DESK_IDEAS_CATALOG: DeskIdeaItem[] = [
     summary:
       'Complete 3-TP ladder rulebook calibrated for XAUUSD London open volatility. Enforces a 1.5% daily risk cap and automatic 15-minute cooldown after Stop-Loss.',
     summaryTh:
-      'ชุดตั้งค่าโต๊ะเทรด 3-TP สำหรับทองคำช่วงเปิดตลาดลอนดอน คุมความเสี่ยงรายวันไม่เกิน 1.5% และตรวจกฎ Consistency ไม่เกิน 40% จากพอร์ตจริง 184 ออเดอร์',
+      'ชุดตั้งค่าโต๊ะเทรด 3-TP สำหรับทองคำช่วงเปิดตลาดลอนดอน คุมความเสี่ยงรายวันไม่เกิน 1.5% และตรวจกฎ Consistency ไม่เกิน 40% (ตัวอย่างโครงสร้างโต๊ะเทรด)',
     includedRules: [
       '3-TP split (40% / 35% / 25%) with auto-breakeven shift after TP1',
       'Hard 40% single-day profit ceiling guard for Prop Evaluations',
@@ -157,12 +157,12 @@ export const DESK_IDEAS_CATALOG: DeskIdeaItem[] = [
     category: 'custom-engine',
     verificationMethod: 'xlsx-sha256',
     verificationProof: {
-      accountMask: 'MT5 #7104••88',
+      accountMask: 'Sample · MT5 #7104••88',
       brokerServer: 'PrimeECN-Real02',
-      ledgerHash: 'sha256:4d19c7b2...88ab',
+      ledgerHash: 'sample-blueprint:ny-index-custom',
       verifiedDealsCount: 126,
       trackingWindowDays: 75,
-      lastSyncedAt: '2026-11-13 21:10 UTC',
+      lastSyncedAt: 'Sample Blueprint Reference',
     },
     metrics: {
       maxDrawdownPct: 3.1,
@@ -174,9 +174,9 @@ export const DESK_IDEAS_CATALOG: DeskIdeaItem[] = [
     priceUsd: 69,
     licensesIssued: 89,
     summary:
-      'Custom non-GHR session layout engineered for the first 90 minutes of New York equities open. Verified via SHA-256 signed broker .xlsx statements.',
+      'Custom session layout engineered for the first 90 minutes of New York equities open. Designed for SHA-256 hashed broker .xlsx statement audits.',
     summaryTh:
-      'โครงสร้างโต๊ะเทรดอิสระ (Custom Desk) สำหรับช่วงเปิดตลาด New York 90 นาทีแรกบน US100 ยืนยันสถิติจากไฟล์ .xlsx โบรเกอร์จริงที่เข้ารหัสแฮช',
+      'โครงสร้างโต๊ะเทรดอิสระ (Custom Desk) สำหรับช่วงเปิดตลาด New York 90 นาทีแรกบน US100 ออกแบบสำหรับตรวจยืนยันผ่านไฟล์ .xlsx โบรเกอร์ที่เข้ารหัสแฮช',
     includedRules: [
       'Custom 2-stage NY Cash Open liquidity sweep risk envelope',
       'Spread spike circuit breaker above 2.2 pts on NAS100',
@@ -211,12 +211,12 @@ export const DESK_IDEAS_CATALOG: DeskIdeaItem[] = [
     category: 'algorithmic',
     verificationMethod: 'ea-local-bridge',
     verificationProof: {
-      accountMask: 'MT5 #6032••41',
+      accountMask: 'Sample · Bridge #6032••41',
       brokerServer: 'VantageRaw-Live07',
-      ledgerHash: 'sha256:b7e201f9...440d',
+      ledgerHash: 'sample-blueprint:ea-drawdown-sentinel',
       verifiedDealsCount: 312,
       trackingWindowDays: 140,
-      lastSyncedAt: '2026-11-14 08:01 UTC',
+      lastSyncedAt: 'Sample Blueprint Reference',
     },
     metrics: {
       maxDrawdownPct: 1.85,
@@ -228,9 +228,9 @@ export const DESK_IDEAS_CATALOG: DeskIdeaItem[] = [
     priceUsd: 89,
     licensesIssued: 64,
     summary:
-      'Coexists silently with automated MQL5 Expert Advisors. Tracks basket floating equity exposure across EURUSD, GBPUSD, and USDJPY with <12ms local tick telemetry.',
+      'Coexists silently with automated MQL5 Expert Advisors via Live Bridge (.ex5). Tracks basket floating equity exposure across EURUSD, GBPUSD, and USDJPY locally.',
     summaryTh:
-      'โต๊ะคุมความเสี่ยงสำหรับสายรัน EA หลายคู่เงิน วัดค่า Floating Basket Equity แบบเรียลไทม์ <12ms พร้อมกติกาแจ้งเตือนก่อนข่าวแรงจากพอร์ตจริง 312 ออเดอร์',
+      'โต๊ะคุมความเสี่ยงสำหรับสายรัน EA หลายคู่เงินผ่าน Live Bridge (.ex5) วัดค่า Floating Basket Equity บนเครื่องพร้อมกติกาแจ้งเตือนก่อนข่าวแรง',
     includedRules: [
       'Multi-symbol correlated exposure ceiling (max 1.8% basket float)',
       'Zero magic-number interference — strictly read-only telemetry layer',
@@ -263,14 +263,14 @@ export const DESK_IDEAS_CATALOG: DeskIdeaItem[] = [
     engineType: 'macro-playbook',
     engineLabel: ENGINE_LABELS['macro-playbook'],
     category: 'discretionary',
-    verificationMethod: 'mt5-investor-sync',
+    verificationMethod: 'cloud-api-sync',
     verificationProof: {
-      accountMask: 'MT5 #9011••09',
-      brokerServer: 'Pepperstone-Edge11',
-      ledgerHash: 'sha256:6c88a2e0...19ef',
+      accountMask: 'Sample · Cloud #9011••09',
+      brokerServer: 'Myfxbook-ReadOnly-API',
+      ledgerHash: 'sample-blueprint:macro-4tp-swing',
       verifiedDealsCount: 94,
       trackingWindowDays: 120,
-      lastSyncedAt: '2026-11-14 06:15 UTC',
+      lastSyncedAt: 'Sample Blueprint Reference',
     },
     metrics: {
       maxDrawdownPct: 2.75,
@@ -282,13 +282,13 @@ export const DESK_IDEAS_CATALOG: DeskIdeaItem[] = [
     priceUsd: 0,
     licensesIssued: 318,
     summary:
-      'Open community 4-TP scaling playbook for H4/D1 macro trends. Verified over 120 days via MT5 Investor read-only link — free to inspect and load into any TallyNX Desk.',
+      'Open community 4-TP scaling playbook for H4/D1 macro trends. Designed for Official Cloud API read-only sync — free to inspect and load into TallyNX Desk.',
     summaryTh:
-      'แผนเทรดสวิง 4-TP ระดับ H4/D1 สำหรับชุมชนเทรดเดอร์ ตรวจสอบจาก MT5 Investor Password ต่อเนื่อง 120 วัน ดาวน์โหลดไปปรับใช้กับโต๊ะเทรด TallyNX ได้ฟรี',
+      'แผนเทรดสวิง 4-TP ระดับ H4/D1 สำหรับชุมชนเทรดเดอร์ รองรับการซิงก์ผ่าน Cloud API ทางการแบบอ่านอย่างเดียว เปิดดูและนำไปปรับใช้กับ TallyNX Desk ได้ฟรี',
     includedRules: [
       '4-TP scaling matrix (25% / 25% / 25% / 25% runner)',
       'Weekly cumulative drawdown ceiling of 3.5% with weekend gap check',
-      'Complete verifiable 94-deal audit ledger attached',
+      'Non-custodial blueprint config ready for TallyNX Desk',
     ],
     sampleDeals: [
       {
@@ -317,14 +317,14 @@ export const DESK_IDEAS_CATALOG: DeskIdeaItem[] = [
     engineType: 'ghr-v32',
     engineLabel: ENGINE_LABELS['ghr-v32'],
     category: 'prop-challenge',
-    verificationMethod: 'mt5-investor-sync',
+    verificationMethod: 'ea-local-bridge',
     verificationProof: {
-      accountMask: 'MT5 #4482••37',
+      accountMask: 'Sample · Bridge #4482••37',
       brokerServer: 'TitanFX-Live03',
-      ledgerHash: 'sha256:2e91b4c8...71ad',
+      ledgerHash: 'sample-blueprint:asian-range-reversion',
       verifiedDealsCount: 208,
       trackingWindowDays: 84,
-      lastSyncedAt: '2026-11-14 05:50 UTC',
+      lastSyncedAt: 'Sample Blueprint Reference',
     },
     metrics: {
       maxDrawdownPct: 1.45,
@@ -336,9 +336,9 @@ export const DESK_IDEAS_CATALOG: DeskIdeaItem[] = [
     priceUsd: 35,
     licensesIssued: 117,
     summary:
-      'Low-drawdown AUDNZD & EURCHF Tokyo session desk rulebook built to pass 2-step prop challenges without overnight swap exposure.',
+      'Low-drawdown AUDNZD & EURCHF Tokyo session desk rulebook built for 2-step prop challenges without overnight swap exposure.',
     summaryTh:
-      'โต๊ะเทรดช่วงตลาดเอเชียเน้น Drawdown ต่ำเป็นพิเศษ (สูงสุด 1.45%) เพื่อสอบ Prop Firm แบบ 2 ขั้นตอนโดยไม่ถือข้ามคืน',
+      'โต๊ะเทรดช่วงตลาดเอเชียเน้น Drawdown ต่ำ (ตัวอย่าง 1.45%) สำหรับกฎ Prop Firm แบบ 2 ขั้นตอนโดยไม่ถือข้ามคืน',
     includedRules: [
       'Flat-before-Frankfurt session cutoff timer',
       '0.35% risk per trade micro-sizing ladder',
@@ -365,12 +365,12 @@ export const DESK_IDEAS_CATALOG: DeskIdeaItem[] = [
     category: 'discretionary',
     verificationMethod: 'xlsx-sha256',
     verificationProof: {
-      accountMask: 'MT5 #3198••62',
+      accountMask: 'Sample · MT5 #3198••62',
       brokerServer: 'ICMarketsSC-Live09',
-      ledgerHash: 'sha256:7a42d09c...52fe',
+      ledgerHash: 'sample-blueprint:personal-compounder',
       verifiedDealsCount: 152,
       trackingWindowDays: 110,
-      lastSyncedAt: '2026-11-13 19:25 UTC',
+      lastSyncedAt: 'Sample Blueprint Reference',
     },
     metrics: {
       maxDrawdownPct: 3.6,
@@ -384,11 +384,11 @@ export const DESK_IDEAS_CATALOG: DeskIdeaItem[] = [
     summary:
       'Designed specifically for personal live accounts (non-prop) with dynamic weekly profit step-down protection and post-win size scaling.',
     summaryTh:
-      'ออกแบบมาสำหรับพอร์ตเงินทุนส่วนตัวโดยเฉพาะ มีระบบล็อกกำไรรายสัปดาห์และปรับขนาด Lot ตามความสม่ำเสมอ ยืนยันจาก Statement จริง 152 ออเดอร์',
+      'ออกแบบมาสำหรับพอร์ตเงินทุนส่วนตัวโดยเฉพาะ มีระบบล็อกกำไรรายสัปดาห์และปรับขนาด Lot ตามความสม่ำเสมอ',
     includedRules: [
       'Weekly profit trailing protection floor (retains 65% of weekly gains)',
       'Personal mode toggle without artificial prop day-count pressure',
-      'Verified .xlsx broker audit ledger attached',
+      'Ready for .xlsx broker audit ledger import in TallyNX Desk',
     ],
     sampleDeals: [
       {
@@ -464,8 +464,8 @@ export function validateDeskSubmission(
   if (!input.title || input.title.trim().length < 4) {
     errors.push(
       lang === 'th'
-        ? 'กรุณาระบุชื่อ Desk-Idea อย่างน้อย 4 ตัวอักษร'
-        : 'Desk-Idea title must be at least 4 characters.'
+        ? 'กรุณาระบุชื่อ Blueprint อย่างน้อย 4 ตัวอักษร'
+        : 'Blueprint title must be at least 4 characters.'
     );
   }
   if (!input.creatorHandle || input.creatorHandle.trim().length < 2) {
@@ -478,15 +478,15 @@ export function validateDeskSubmission(
   if (!input.accountOrHashRef || input.accountOrHashRef.trim().length < 6) {
     errors.push(
       lang === 'th'
-        ? 'ต้องระบุหลักฐานข้อมูลจริง (เลขพอร์ต MT5 Investor หรือรหัสแฮช .xlsx อย่างน้อย 6 ตัวอักษร)'
-        : 'Real-data verification proof (MT5 account ID or .xlsx SHA-256 reference, min 6 chars) is required.'
+        ? 'ต้องระบุข้อมูลอ้างอิงช่องทางซิงก์ (Live Bridge ID, Cloud API ID หรือแฮช .xlsx อย่างน้อย 6 ตัวอักษร)'
+        : 'Verification channel reference (Live Bridge ID, Cloud API ID, or .xlsx hash, min 6 chars) is required.'
     );
   }
   if (!input.brokerServer || input.brokerServer.trim().length < 3) {
     errors.push(
       lang === 'th'
-        ? 'กรุณาระบุชื่อเซิร์ฟเวอร์โบรเกอร์ที่ตรวจสอบได้'
-        : 'Verifiable broker server name is required.'
+        ? 'กรุณาระบุชื่อโบรเกอร์หรือแหล่งซิงก์'
+        : 'Broker server or sync provider name is required.'
     );
   }
   if (
@@ -496,8 +496,8 @@ export function validateDeskSubmission(
   ) {
     errors.push(
       lang === 'th'
-        ? 'Max Drawdown จริงต้องอยู่ระหว่าง 0.1% ถึง 25%'
-        : 'Verified Max Drawdown must be between 0.1% and 25%.'
+        ? 'Max Drawdown เป้าหมายต้องอยู่ระหว่าง 0.1% ถึง 25%'
+        : 'Target Max Drawdown must be between 0.1% and 25%.'
     );
   }
   if (
@@ -507,8 +507,8 @@ export function validateDeskSubmission(
   ) {
     errors.push(
       lang === 'th'
-        ? 'Win Rate จริงต้องอยู่ระหว่าง 1% ถึง 99%'
-        : 'Verified Win Rate must be between 1% and 99%.'
+        ? 'Win Rate อ้างอิงต้องอยู่ระหว่าง 1% ถึง 99%'
+        : 'Reference Win Rate must be between 1% and 99%.'
     );
   }
   if (!Number.isFinite(input.profitFactor) || input.profitFactor <= 0.1) {
@@ -522,7 +522,7 @@ export function validateDeskSubmission(
     errors.push(
       lang === 'th'
         ? 'ราคาต้องไม่ต่ำกว่า $0'
-        : 'License price cannot be negative.'
+        : 'Reference price cannot be negative.'
     );
   }
   if (!input.summary || input.summary.trim().length < 12) {
@@ -536,6 +536,10 @@ export function validateDeskSubmission(
   return { valid: errors.length === 0, errors };
 }
 
+/**
+ * Creates a local unverified draft blueprint preview without fabricating cryptographic hashes or synthetic trade deals.
+ * Real cryptographic verification and publishing occur inside TallyNX Desk.
+ */
 export function createVerifiedDeskIdea(
   input: NewDeskSubmissionInput,
   existingCount: number
@@ -546,21 +550,14 @@ export function createVerifiedDeskIdea(
   const cleanRef = input.accountOrHashRef.trim();
   const maskedAccount =
     cleanRef.length >= 6
-      ? `MT5 #${cleanRef.slice(0, 4)}••${cleanRef.slice(-2)}`
-      : `MT5 #${cleanRef}`;
-
-  // Deterministic lightweight digest preview derived from real ref string
-  let checksum = 0;
-  for (let i = 0; i < cleanRef.length; i++) {
-    checksum = (checksum * 31 + cleanRef.charCodeAt(i)) >>> 0;
-  }
-  const digestHex = checksum.toString(16).padStart(8, '0');
+      ? `Draft Ref #${cleanRef.slice(0, 4)}••${cleanRef.slice(-2)}`
+      : `Draft Ref #${cleanRef}`;
 
   return {
-    id: `idea-verified-${existingCount + 1}-${digestHex.slice(0, 4)}`,
+    id: `draft-blueprint-${existingCount + 1}`,
     title: input.title.trim(),
     creatorHandle: cleanHandle,
-    creatorRole: 'Verified MT5 Contributor',
+    creatorRole: 'Local Draft (Unverified — Verify in TallyNX Desk)',
     engineType: input.engineType,
     engineLabel: ENGINE_LABELS[input.engineType],
     category: input.category,
@@ -568,37 +565,28 @@ export function createVerifiedDeskIdea(
     verificationProof: {
       accountMask: maskedAccount,
       brokerServer: input.brokerServer.trim(),
-      ledgerHash: `sha256:${digestHex}...verified`,
-      verifiedDealsCount: 48 + (checksum % 140),
-      trackingWindowDays: 30 + (checksum % 60),
-      lastSyncedAt: '2026-11-14 UTC (Verified)',
+      ledgerHash: 'pending-desk-verification',
+      verifiedDealsCount: 0,
+      trackingWindowDays: 0,
+      lastSyncedAt: 'Pending TallyNX Desk verification',
     },
     metrics: {
       maxDrawdownPct: +Number(input.maxDrawdownPct).toFixed(2),
       winRatePct: +Number(input.winRatePct).toFixed(1),
       profitFactor: +Number(input.profitFactor).toFixed(2),
-      consistencyScorePct: 26.5,
-      expectancyR: +(Number(input.profitFactor) * 0.32).toFixed(2),
+      consistencyScorePct: 0,
+      expectancyR: 0,
     },
     priceUsd: Math.round(Number(input.priceUsd)),
     licensesIssued: 0,
     summary: input.summary.trim(),
     summaryTh: input.summary.trim(),
     includedRules: [
-      `Engine: ${ENGINE_LABELS[input.engineType]} deterministic config`,
-      `Verified via ${VERIFICATION_LABELS[input.verificationMethod].en} (Read-Only)`,
+      `Engine: ${ENGINE_LABELS[input.engineType]} blueprint config`,
+      `Target verification channel: ${VERIFICATION_LABELS[input.verificationMethod].en}`,
       'Zero copy-trade execution rights — loads locally into your MT5 desk',
     ],
-    sampleDeals: [
-      {
-        ticket: `#${9500000 + (checksum % 90000)}`,
-        symbol: 'XAUUSD',
-        side: 'BUY',
-        rMultiple: 1.45,
-        drawdownPct: +Math.min(1.5, input.maxDrawdownPct * 0.4).toFixed(2),
-        closedAt: '2026-11-14 UTC',
-      },
-    ],
+    sampleDeals: [],
   };
 }
 
@@ -632,18 +620,18 @@ export function calculateLicenseBagTotal(items: DeskIdeaItem[]): {
 export function buildDeskConfigExport(item: DeskIdeaItem): string {
   return JSON.stringify(
     {
-      schema: 'tallynx.desk-idea/v4',
+      schema: 'tallynx.desk-blueprint/v5.2',
       idea_id: item.id,
       title: item.title,
       creator: item.creatorHandle,
       desk_engine: item.engineLabel,
       verification: {
-        method: item.verificationMethod,
-        ledger_hash: item.verificationProof.ledgerHash,
+        channel: item.verificationMethod,
+        ledger_ref: item.verificationProof.ledgerHash,
         verified_deals: item.verificationProof.verifiedDealsCount,
         broker_server: item.verificationProof.brokerServer,
       },
-      verified_metrics: item.metrics,
+      reference_metrics: item.metrics,
       execution_boundary: {
         auto_copy_trade: false,
         custodial_holding: false,

@@ -18,6 +18,15 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
   const [showIOSGuide, setShowIOSGuide] = useState(false);
   const isTh = lang === 'th';
 
+  React.useEffect(() => {
+    if (!showIOSGuide) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowIOSGuide(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showIOSGuide]);
+
   if (isInstalled) {
     return null;
   }
@@ -95,7 +104,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
               <button
                 type="button"
                 onClick={() => setShowIOSGuide(false)}
-                className="mt-5 w-full rounded-lg bg-accent-solid py-2 text-xs font-semibold text-white hover:bg-[#79350F] transition cursor-pointer"
+                className="mt-5 w-full rounded-lg bg-accent-solid py-2 text-xs font-semibold text-white hover:brightness-95 transition cursor-pointer"
               >
                 {isTh ? 'เข้าใจแล้ว' : 'Got it'}
               </button>

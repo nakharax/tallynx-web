@@ -7,7 +7,7 @@ export type DeskEngineType =
   | 'macro-playbook';
 
 export type VerificationMethod =
-  | 'mt5-investor-sync'
+  | 'cloud-api-sync'
   | 'xlsx-sha256'
   | 'ea-local-bridge';
 
@@ -22,17 +22,17 @@ export const VERIFICATION_LABELS: Record<
   VerificationMethod,
   Record<Language, string>
 > = {
-  'mt5-investor-sync': {
-    en: 'MT5 Investor Read-Only',
-    th: 'ซิงก์ MT5 Investor (ดูอย่างเดียว)',
+  'cloud-api-sync': {
+    en: 'Official Cloud API (Read-Only)',
+    th: 'ซิงก์ Cloud API ทางการ (อ่านอย่างเดียว)',
   },
   'xlsx-sha256': {
     en: '.xlsx Statement Hash',
     th: 'ตรวจแฮชไฟล์ .xlsx โบรเกอร์',
   },
   'ea-local-bridge': {
-    en: 'Local EA Telemetry',
-    th: 'เชื่อมตรง Local EA Bridge',
+    en: 'Live Bridge (.ex5) Telemetry',
+    th: 'เชื่อมตรง Live Bridge (.ex5)',
   },
 };
 
@@ -70,7 +70,7 @@ export interface LandingSpotlightIdea {
 }
 
 /**
- * Compact preview slice of the top 3 featured Marketplace setups for the
+ * Compact preview slice of the top 3 featured Marketplace blueprints for the
  * landing page spotlight, keeping the full catalog out of the initial bundle.
  */
 export const LANDING_MARKETPLACE_SPOTLIGHT: readonly LandingSpotlightIdea[] = [
@@ -79,12 +79,12 @@ export const LANDING_MARKETPLACE_SPOTLIGHT: readonly LandingSpotlightIdea[] = [
     title: 'London Open Gold 40%-Cap Prop Desk',
     creatorHandle: '@kavin.quant',
     engineType: 'ghr-v32',
-    verificationMethod: 'mt5-investor-sync',
-    brokerServer: 'RawSpread-Live04',
+    verificationMethod: 'cloud-api-sync',
+    brokerServer: 'FundedNext-MCP-ReadOnly',
     summary:
       'Complete 3-TP ladder rulebook calibrated for XAUUSD London open volatility. Enforces a 1.5% daily risk cap and automatic 15-minute cooldown after Stop-Loss.',
     summaryTh:
-      'ชุดตั้งค่าโต๊ะเทรด 3-TP สำหรับทองคำช่วงเปิดตลาดลอนดอน คุมความเสี่ยงรายวันไม่เกิน 1.5% และตรวจกฎ Consistency ไม่เกิน 40% จากพอร์ตจริง 184 ออเดอร์',
+      'ชุดตั้งค่าโต๊ะเทรด 3-TP สำหรับทองคำช่วงเปิดตลาดลอนดอน คุมความเสี่ยงรายวันไม่เกิน 1.5% และตรวจกฎ Consistency ไม่เกิน 40% (ตัวอย่างโครงสร้างโต๊ะเทรด)',
     maxDrawdownPct: 2.35,
     profitFactor: 2.28,
     priceUsd: 49,
@@ -97,9 +97,9 @@ export const LANDING_MARKETPLACE_SPOTLIGHT: readonly LandingSpotlightIdea[] = [
     verificationMethod: 'xlsx-sha256',
     brokerServer: 'PrimeECN-Real02',
     summary:
-      'Custom non-GHR session layout engineered for the first 90 minutes of New York equities open. Verified via SHA-256 signed broker .xlsx statements.',
+      'Custom session layout engineered for the first 90 minutes of New York equities open. Designed for SHA-256 hashed broker .xlsx statement audits.',
     summaryTh:
-      'โครงสร้างโต๊ะเทรดอิสระ (Custom Desk) สำหรับช่วงเปิดตลาด New York 90 นาทีแรกบน US100 ยืนยันสถิติจากไฟล์ .xlsx โบรเกอร์จริงที่เข้ารหัสแฮช',
+      'โครงสร้างโต๊ะเทรดอิสระ (Custom Desk) สำหรับช่วงเปิดตลาด New York 90 นาทีแรกบน US100 ออกแบบสำหรับตรวจยืนยันผ่านไฟล์ .xlsx โบรเกอร์ที่เข้ารหัสแฮช',
     maxDrawdownPct: 3.1,
     profitFactor: 2.04,
     priceUsd: 69,
@@ -112,9 +112,9 @@ export const LANDING_MARKETPLACE_SPOTLIGHT: readonly LandingSpotlightIdea[] = [
     verificationMethod: 'ea-local-bridge',
     brokerServer: 'VantageRaw-Live07',
     summary:
-      'Coexists silently with automated MQL5 Expert Advisors. Tracks basket floating equity exposure across EURUSD, GBPUSD, and USDJPY with <12ms local tick telemetry.',
+      'Coexists silently with automated MQL5 Expert Advisors via Live Bridge (.ex5). Tracks basket floating equity exposure across EURUSD, GBPUSD, and USDJPY locally.',
     summaryTh:
-      'โต๊ะคุมความเสี่ยงสำหรับสายรัน EA หลายคู่เงิน วัดค่า Floating Basket Equity แบบเรียลไทม์ <12ms พร้อมกติกาแจ้งเตือนก่อนข่าวแรงจากพอร์ตจริง 312 ออเดอร์',
+      'โต๊ะคุมความเสี่ยงสำหรับสายรัน EA หลายคู่เงินผ่าน Live Bridge (.ex5) วัดค่า Floating Basket Equity บนเครื่องพร้อมกติกาแจ้งเตือนก่อนข่าวแรง',
     maxDrawdownPct: 1.85,
     profitFactor: 1.92,
     priceUsd: 89,

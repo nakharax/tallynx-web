@@ -63,7 +63,7 @@ export const TredynDeskPreview: React.FC<TredynDeskPreviewProps> = ({
             {tabId === 'visibility'
               ? th
                 ? 'ภาพรวมพอร์ตและคำนวณ 3-TP/4-TP'
-                : 'Account Visibility · GHR v3.2'
+                : 'Account Visibility · TallyNX Desk v5.2'
               : tabId === 'limits'
                 ? th
                   ? 'กำหนดเพดานและด่านวินัย 12-Gate'
@@ -111,7 +111,7 @@ export const TredynDeskPreview: React.FC<TredynDeskPreviewProps> = ({
                   #88492015
                 </p>
                 <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
-                  {th ? 'Investor Sync · 1.1s' : 'Investor Sync · 1.1s'}
+                  {th ? 'Live Bridge (.ex5) · 1.1s' : 'Live Bridge (.ex5) · 1.1s'}
                 </p>
               </div>
 
@@ -288,7 +288,7 @@ export const TredynDeskPreview: React.FC<TredynDeskPreviewProps> = ({
               <div className="flex items-center gap-2 text-[11px] font-mono">
                 <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                 <span className="font-semibold">
-                  {th ? 'บันทึก MT5 จริง + แฮช .xlsx' : 'MT5 Investor Sync · .xlsx SHA-256 Proof'}
+                  {th ? 'บันทึก MT5 จริง + แฮช .xlsx' : 'Live Bridge (.ex5) · .xlsx SHA-256 Proof'}
                 </span>
               </div>
               <span className={`text-[10px] font-mono tabular-nums ${mutedText}`}>

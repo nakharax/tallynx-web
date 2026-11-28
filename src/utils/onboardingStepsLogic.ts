@@ -3,6 +3,7 @@ import {
   type ConnectionTierId,
   type OnboardingTransferState,
 } from './onboardingLogic';
+import type { AutopsyPosition } from './statementAutopsyPreview';
 
 export interface SevenDayDayBar {
   dayLabel: string;
@@ -13,6 +14,7 @@ export interface SevenDayDayBar {
 
 export interface SevenDayHealthSummary {
   tierUsed: ConnectionTierId;
+  isRealStatement: boolean;
   sourceLabelEn: string;
   sourceLabelTh: string;
   heartbeatLatencyMs: number;
@@ -34,11 +36,78 @@ export interface TwelveGateChecklistItem {
   critical: boolean;
 }
 
-export const MT5_BRIDGE_PING_URL = 'https://telemetry.tallynx.com/v1/mt5/ping';
-export const MT5_BRIDGE_DOWNLOAD_FILENAME = 'TallyNX_Bridge_v4.ex5';
+export const MT5_BRIDGE_PING_URL = 'https://desk.tallynx.com/api/mt5/live-bridge/push';
+export const MT5_BRIDGE_DOWNLOAD_FILENAME = 'TredynLiveBridge.ex5';
+export const MT5_BRIDGE_EX5_URL = 'https://desk.tallynx.com/scripts/TredynLiveBridge.ex5';
+export const MT5_BRIDGE_MQ5_URL = 'https://desk.tallynx.com/scripts/TredynLiveBridge.mq5';
 
 /**
- * Generates realistic 7-day portfolio health telemetry upon completing Step 4 sync.
+ * Computes an honest 7-day (last 7 active UTC trading days) health summary from real parsed MT5 CSV/HTML trades.
+ */
+export function buildSevenDaySummaryFromPositions(
+  state: OnboardingTransferState,
+  positions: readonly AutopsyPosition[],
+  fileName: string
+): SevenDayHealthSummary {
+  const safe = clampTransferState(state);
+  const byDay = new Map<string, { pnlUsd: number; trades: number }>();
+  let wins = 0;
+
+  const sorted = [...positions].sort((a, b) => a.closedAt - b.closedAt);
+  for (const pos of sorted) {
+    const dayKey = new Date(pos.closedAt).toISOString().slice(0, 10);
+    const current = byDay.get(dayKey) ?? { pnlUsd: 0, trades: 0 };
+    current.pnlUsd += pos.netPnlUsd;
+    current.trades += 1;
+    byDay.set(dayKey, current);
+    if (pos.netPnlUsd > 0) wins += 1;
+  }
+
+  const recentEntries = Array.from(byDay.entries()).slice(-7);
+  const totalNet = Math.round(
+    recentEntries.reduce((acc, [, v]) => acc + v.pnlUsd, 0) * 100
+  ) / 100;
+  const bestPositive = Math.max(0, ...recentEntries.map(([, v]) => v.pnlUsd));
+  const bestDaySharePct =
+    totalNet > 0 ? Math.round((bestPositive / totalNet) * 1000) / 10 : 0;
+
+  const worstDayLoss = Math.max(
+    0,
+    ...recentEntries.map(([, v]) => (v.pnlUsd < 0 ? Math.abs(v.pnlUsd) : 0))
+  );
+  const dailyDdCeilingUsd = safe.accountSize * (safe.dailyDdLimitPct / 100);
+  const maxDrawdownUsedPct =
+    Math.round((worstDayLoss / Math.max(1, safe.accountSize)) * 10000) / 100;
+
+  const days: SevenDayDayBar[] = recentEntries.map(([isoDate, data]) => ({
+    dayLabel: isoDate.slice(5),
+    pnlUsd: Math.round(data.pnlUsd),
+    sharePct: totalNet > 0 && data.pnlUsd > 0 ? Math.round((data.pnlUsd / totalNet) * 100) : 0,
+    trades: data.trades,
+  }));
+
+  const winRatePct =
+    positions.length > 0 ? Math.round((wins / positions.length) * 1000) / 10 : 0;
+
+  return {
+    tierUsed: 'xlsx',
+    isRealStatement: true,
+    sourceLabelEn: `Parsed Local Statement (${fileName})`,
+    sourceLabelTh: `วิเคราะห์ไฟล์จากเครื่องจริง (${fileName})`,
+    heartbeatLatencyMs: 0,
+    netProfitUsd: Math.round(totalNet),
+    netReturnPct: Math.round((totalNet / safe.accountSize) * 10000) / 100,
+    bestDaySharePct,
+    consistencyPass: safe.mode === 'prop' ? bestDaySharePct <= 40 : true,
+    maxDrawdownUsedPct,
+    dailyBufferRemainingUsd: Math.max(0, Math.round(dailyDdCeilingUsd - worstDayLoss)),
+    winRatePct,
+    days,
+  };
+}
+
+/**
+ * Generates sample 7-day portfolio health preview telemetry for the onboarding walkthrough.
  */
 export function getSevenDayHealthSummary(
   state: OnboardingTransferState,
@@ -72,13 +141,13 @@ export function getSevenDayHealthSummary(
     { labelEn: string; labelTh: string; latencyMs: number }
   > = {
     xlsx: {
-      labelEn: 'MT5 Statement (.xlsx Preview)',
-      labelTh: 'ตัวอย่างรายงาน MT5 (.xlsx)',
+      labelEn: 'Sample Statement Preview (Demo Dataset)',
+      labelTh: 'ตัวอย่างรายงาน MT5 (ข้อมูลจำลอง)',
       latencyMs: 320,
     },
     cloud: {
-      labelEn: 'Read-Only Cloud API Preview',
-      labelTh: 'ตัวอย่างซิงก์ผ่าน Cloud API แบบอ่านอย่างเดียว',
+      labelEn: 'Read-Only Cloud API Preview (Demo)',
+      labelTh: 'ตัวอย่างซิงก์ผ่าน Cloud API (ข้อมูลจำลอง)',
       latencyMs: 680,
     },
     ex5: {
@@ -93,6 +162,7 @@ export function getSevenDayHealthSummary(
 
   return {
     tierUsed: tier,
+    isRealStatement: false,
     sourceLabelEn: metaByTier[tier].labelEn,
     sourceLabelTh: metaByTier[tier].labelTh,
     heartbeatLatencyMs: metaByTier[tier].latencyMs,

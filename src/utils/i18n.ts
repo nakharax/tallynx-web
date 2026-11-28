@@ -1,4 +1,4 @@
-﻿export type Language = 'en' | 'th';
+export type Language = 'en' | 'th';
 
 export function toggleLanguage(current: Language): Language {
   return current === 'en' ? 'th' : 'en';
@@ -102,8 +102,8 @@ export const DICTIONARIES: Record<Language, TranslationDictionary> = {
       safeBadge: '0 EXECUTION AUTHORITY',
       safeBullets: [
         {
-          bold: 'Read-only access:',
-          text: 'Sync via read-only Investor Password or .xlsx statement import.',
+          bold: 'Read-only channels:',
+          text: 'Sync via Live Bridge (.ex5) on your machine or private VPS, Official Cloud APIs (FundedNext MCP / Myfxbook / ProjectX), or .xlsx statement import.',
         },
         {
           bold: 'No order access:',
@@ -116,8 +116,8 @@ export const DICTIONARIES: Record<Language, TranslationDictionary> = {
       ],
     },
     workspace: {
-      eyebrow: 'WORKSPACE · TALLYNX TRADING OS v4.0',
-      visitLink: 'Launch TallyNX Mall',
+      eyebrow: 'WORKSPACE · TALLYNX DESK v5.2',
+      visitLink: 'Launch TallyNX Desk',
       titleLine1: 'Track drawdown',
       titleAccent: 'and plan position size',
       subtitle: 'Multi-TP Ladder Math, 40% Consistency Rule, AI Risk Coach Guardrails, and Read-Only MT5 Sync.',
@@ -163,11 +163,11 @@ export const DICTIONARIES: Record<Language, TranslationDictionary> = {
         },
         {
           code: '05. Cloud & SSO',
-          title: 'Offline-First PWA + Real-Time Streams & Cross-Subdomain SSO',
-          metricBadge: 'tallynx.com ↔ mall',
+          title: 'Installable PWA + Seamless Desk Handoff & AI Advisor',
+          metricBadge: 'tallynx.com → desk',
           description:
-            'Installable offline-first PWA with encrypted real-time cloud streams, cross-subdomain SSO (tallynx.com ↔ mall.tallynx.com), and the 3-model AI Risk Coach.',
-          specFooter: 'Offline PWA · Cross-Subdomain SSO · 3-Model AI Coach',
+            'Install TallyNX as a web app, carry your risk parameters straight into TallyNX Desk (desk.tallynx.com) where offline-first caching & cloud backup run, and consult TallyNX Advisor.',
+          specFooter: 'Installable PWA · Desk Handoff · TallyNX Advisor',
         },
       ],
     },
@@ -232,8 +232,8 @@ export const DICTIONARIES: Record<Language, TranslationDictionary> = {
       ],
     },
     workspace: {
-      eyebrow: 'โต๊ะเทรด · TALLYNX TRADING OS v4.0',
-      visitLink: 'เปิด TallyNX Mall',
+      eyebrow: 'โต๊ะเทรด · TALLYNX DESK v5.2',
+      visitLink: 'เปิดโต๊ะเทรด TallyNX Desk',
       titleLine1: 'ติดตาม Drawdown',
       titleAccent: 'และวางแผนขนาดสถานะ',
       subtitle: 'คำนวณขนาดสถานะแบบ Multi-TP เช็กกฎ Consistency 40% ดูคำเตือนจากโค้ช AI และซิงก์ MT5 แบบอ่านอย่างเดียว',
@@ -279,11 +279,11 @@ export const DICTIONARIES: Record<Language, TranslationDictionary> = {
         },
         {
           code: '05. Cloud & SSO',
-          title: 'Offline-First PWA + Real-Time Streams & Cross-Subdomain SSO',
-          metricBadge: 'tallynx.com ↔ mall',
+          title: 'ติดตั้งเป็นเว็บแอป PWA + ส่งต่อค่าเข้า TallyNX Desk ทันที',
+          metricBadge: 'tallynx.com → desk',
           description:
-            'ติดตั้งแบบ Offline-First PWA พร้อมสตรีมข้อมูลเรียลไทม์ ระบบ Cross-Subdomain SSO (tallynx.com ↔ mall.tallynx.com) และโค้ช AI 3 โมเดล',
-          specFooter: 'Offline PWA · Cross-Subdomain SSO · โค้ช AI 3 โมเดล',
+            'ติดตั้งหน้าเว็บเป็นแอปได้ ส่งต่อค่าความเสี่ยงเข้าสู่ TallyNX Desk (desk.tallynx.com) ซึ่งรองรับการทำงานแบบ Offline-First และสำรองข้อมูลคลาวด์ พร้อมผู้ช่วย TallyNX Advisor',
+          specFooter: 'Installable PWA · ส่งต่อเข้า Desk · TallyNX Advisor',
         },
       ],
     },

@@ -114,30 +114,30 @@ const ROUTE_SEO_REGISTRY: Record<AppRoutePath, StaticRouteCopy> = {
   },
   '/marketplace': {
     en: {
-      title: 'TallyNX Marketplace – Verified MT5 Trading Desks',
+      title: 'TallyNX Marketplace – MT5 Desk Blueprint Showcase',
       description:
-        'Browse and license MT5 desk setups with proof from the Live Bridge, an official Cloud API, or a hashed broker statement. Inspect the source on each listing.',
+        'Explore MT5 trading desk blueprints and risk rulebooks built for Live Bridge (.ex5), Cloud API, and hashed statements. Open in TallyNX Desk.',
       keywords: [
         'TallyNX Marketplace',
-        'Verified MT5 Setups',
+        'MT5 Desk Blueprints',
         'Trading Playbooks',
         'Non-Custodial Desk Blueprint',
       ],
       ogSiteName: 'TallyNX Marketplace',
-      ogImageAlt: 'TallyNX Marketplace — Verified MT5 Trading Desks',
+      ogImageAlt: 'TallyNX Marketplace — MT5 Desk Blueprint Showcase',
     },
     th: {
-      title: 'TallyNX Marketplace – ชุดตั้งค่าโต๊ะเทรด MT5 ที่มีหลักฐาน',
+      title: 'TallyNX Marketplace – คลังโครงสร้างโต๊ะเทรด MT5',
       description:
-        'เลือกซื้อสิทธิ์ใช้ชุดตั้งค่าโต๊ะเทรด MT5 และดูหลักฐานจาก Live Bridge (.ex5), Cloud API หรือแฮช .xlsx ระบบไม่คัดลอกออเดอร์',
+        'สำรวจโครงสร้างโต๊ะเทรด MT5 และกติกาคุมความเสี่ยงสำหรับ Live Bridge (.ex5), Cloud API หรือไฟล์รายงาน พร้อมเปิดใช้งานจริงใน TallyNX Desk',
       keywords: [
         'TallyNX Marketplace',
-        'ชุดตั้งค่าโต๊ะเทรด MT5 ที่มีหลักฐาน',
+        'โครงสร้างโต๊ะเทรด MT5',
         'Setup เทรดทอง',
         'Live Bridge MT5',
       ],
       ogSiteName: 'TallyNX Marketplace',
-      ogImageAlt: 'TallyNX Marketplace — ชุดตั้งค่าโต๊ะเทรด MT5 ที่มีหลักฐาน',
+      ogImageAlt: 'TallyNX Marketplace — คลังโครงสร้างโต๊ะเทรด MT5',
     },
   },
   '/sandbox': {
@@ -267,7 +267,8 @@ export function getSeoMetadataForRoute(
 
 /**
  * Builds Schema.org JSON-LD structured data specifically for the TallyNX Marketplace.
- * Outputs a CollectionPage wrapping an ItemList of verified SoftwareApplication/Product Offers.
+ * Outputs a CollectionPage wrapping an ItemList of non-custodial desk blueprint configurations
+ * (no fabricated InStock/Offer claims for sample showcase entries).
  */
 export function buildMarketplaceStructuredData(
   items: DeskIdeaItem[] = DESK_IDEAS_CATALOG,
@@ -279,9 +280,9 @@ export function buildMarketplaceStructuredData(
   return {
     '@context': 'https://schema.org',
     '@type': 'CollectionPage',
-    name: 'TallyNX Marketplace',
+    name: 'TallyNX Marketplace Blueprint Showcase',
     description:
-      'Verified MT5 trading desk configurations and risk rulebooks backed by Live Bridge (.ex5), Official Cloud APIs, and SHA-256 hashes of broker statements.',
+      'Sample MT5 trading desk configurations and risk rulebooks designed for Live Bridge (.ex5), Official Cloud APIs, and hashed broker statements in TallyNX Desk.',
     url: marketplaceUrl,
     image: `${safeOrigin}${OG_IMAGE_PATH}`,
     isPartOf: {
@@ -291,48 +292,33 @@ export function buildMarketplaceStructuredData(
     },
     mainEntity: {
       '@type': 'ItemList',
-      name: 'Verified TallyNX Desk-Ideas',
+      name: 'TallyNX Desk Blueprint Showcase',
       numberOfItems: items.length,
       itemListElement: items.map((item, idx) => ({
         '@type': 'ListItem',
         position: idx + 1,
         item: {
-          '@type': 'Product',
-          sku: item.id,
+          '@type': 'SoftwareApplication',
+          identifier: item.id,
           name: item.title,
           description: item.summary,
-          category: item.engineLabel,
-          url: `${marketplaceUrl}#${item.id}`,
-          brand: {
-            '@type': 'Brand',
-            name: 'TallyNX',
-          },
-          creator: {
+          applicationCategory: 'FinanceApplication',
+          operatingSystem: 'Web',
+          url: `${marketplaceUrl}?idea=${encodeURIComponent(item.id)}`,
+          author: {
             '@type': 'Person',
             name: item.creatorHandle,
-          },
-          offers: {
-            '@type': 'Offer',
-            price: item.priceUsd.toFixed(2),
-            priceCurrency: 'USD',
-            availability: 'https://schema.org/InStock',
-            url: `${marketplaceUrl}#${item.id}`,
           },
           additionalProperty: [
             {
               '@type': 'PropertyValue',
-              name: 'Verification Method',
+              name: 'Desk Engine',
+              value: item.engineLabel,
+            },
+            {
+              '@type': 'PropertyValue',
+              name: 'Verification Channel',
               value: item.verificationMethod,
-            },
-            {
-              '@type': 'PropertyValue',
-              name: 'Max Drawdown',
-              value: `${item.metrics.maxDrawdownPct}%`,
-            },
-            {
-              '@type': 'PropertyValue',
-              name: 'Profit Factor',
-              value: String(item.metrics.profitFactor),
             },
             {
               '@type': 'PropertyValue',
@@ -461,6 +447,9 @@ export function renderSsrSeoHeadTags(
     `<meta property="og:description" content="${escapeHtmlAttr(meta.ogDescription)}" />`,
     `<meta property="og:url" content="${escapeHtmlAttr(meta.ogUrl)}" />`,
     `<meta property="og:image" content="${escapeHtmlAttr(meta.ogImage)}" />`,
+    ...(meta.ogImage.endsWith('.jpg') || meta.ogImage.endsWith('.jpeg')
+      ? [`<meta property="og:image:type" content="image/jpeg" />`]
+      : []),
     `<meta property="og:image:width" content="1200" />`,
     `<meta property="og:image:height" content="630" />`,
     `<meta property="og:image:alt" content="${escapeHtmlAttr(meta.ogImageAlt)}" />`,
@@ -468,7 +457,7 @@ export function renderSsrSeoHeadTags(
     `<meta name="twitter:title" content="${escapeHtmlAttr(meta.twitterTitle)}" />`,
     `<meta name="twitter:description" content="${escapeHtmlAttr(meta.twitterDescription)}" />`,
     `<meta name="twitter:image" content="${escapeHtmlAttr(meta.twitterImage)}" />`,
-    `<script id="tredyn-structured-data" type="application/ld+json">${primaryJsonLd}</script>`,
+    `<script id="tallynx-structured-data" type="application/ld+json">${primaryJsonLd}</script>`,
     `<script id="tallynx-breadcrumb-data" type="application/ld+json">${breadcrumbJsonLd}</script>`,
   ];
 
@@ -586,7 +575,7 @@ export function syncDocumentSeo(
 
   const primarySchema = buildStructuredDataForRoute(meta.routePath, origin, marketplaceItems);
   const breadcrumbSchema = buildBreadcrumbStructuredData(meta.routePath, lang, origin);
-  upsertJsonLdScript('tredyn-structured-data', primarySchema);
+  upsertJsonLdScript('tallynx-structured-data', primarySchema);
   upsertJsonLdScript('tallynx-breadcrumb-data', breadcrumbSchema);
 
   return meta;

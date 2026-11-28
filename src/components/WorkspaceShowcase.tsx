@@ -5,7 +5,7 @@ import { TredynDeskPreview } from './TredynDeskPreview';
 import { RealDeskEmbed, type DeskScreenshotId } from './RealDeskEmbed';
 import { Play, Pause, Maximize2, ExternalLink, ArrowRight, Monitor, Layers } from 'lucide-react';
 import { Language, getDictionary } from '../utils/i18n';
-import { TREDYN_DESK_URL, TREDYN_MALL_CHAT_URL } from '../utils/navLogic';
+import { TALLYNX_DESK_APP_URL, TREDYN_MALL_CHAT_URL } from '../utils/navLogic';
 import { buildDeskHandoffUrl, type DeskPage, type OnboardingTransferState } from '../utils/onboardingLogic';
 
 const DESK_PAGE_BY_WALKTHROUGH = {
@@ -41,6 +41,17 @@ export const WorkspaceShowcase: React.FC<WorkspaceShowcaseProps> = ({
   const isAutoPaused = previewPaused || globalMotionPaused;
 
   useEffect(() => {
+    if (!lightboxOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setLightboxOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [lightboxOpen]);
+
+  useEffect(() => {
     if (workspaceMode !== 'walkthrough' || isAutoPaused || isHovered || lightboxOpen) return;
 
     const intervalMs = 100;
@@ -64,7 +75,7 @@ export const WorkspaceShowcase: React.FC<WorkspaceShowcaseProps> = ({
   const page = workspaceMode === 'live'
     ? (deskScreenId === 'chart' ? 'mall' : deskScreenId)
     : DESK_PAGE_BY_WALKTHROUGH[activeTab.id];
-  const deskUrl = buildDeskHandoffUrl(page === 'mall' ? TREDYN_MALL_CHAT_URL : TREDYN_DESK_URL, transferState, {
+  const deskUrl = buildDeskHandoffUrl(page === 'mall' ? TREDYN_MALL_CHAT_URL : TALLYNX_DESK_APP_URL, transferState, {
     lang,
     theme: isDark ? 'dark' : 'light',
     page: page === 'mall' ? undefined : page,
@@ -328,7 +339,7 @@ export const WorkspaceShowcase: React.FC<WorkspaceShowcaseProps> = ({
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 font-semibold hover:text-focus transition-colors"
                 >
-                  <span>{dict.nav.openMall}</span>
+                  <span>{page === 'mall' ? dict.nav.openMall : dict.nav.openDesk}</span>
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>
               </div>
@@ -361,6 +372,7 @@ export const WorkspaceShowcase: React.FC<WorkspaceShowcaseProps> = ({
         <div
           role="dialog"
           aria-modal="true"
+          aria-label={lang === 'th' ? `ขยายมุมมอง ${activeTab.title}` : `Expanded workspace view: ${activeTab.title}`}
           className="fixed inset-0 z-50 flex items-center justify-center bg-[#141618]/85 backdrop-blur-md p-4 sm:p-8"
           onClick={() => setLightboxOpen(false)}
         >

@@ -514,16 +514,16 @@ export const LandingOverview: React.FC<LandingOverviewProps> = React.memo(({
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-[11px] text-muted">License</div>
-                      <div className="font-bold tabular-nums text-[#141618] dark:text-white">
-                        ${idea.priceUsd}
+                      <div className="text-[11px] text-muted">{isTh ? 'รูปแบบ' : 'Format'}</div>
+                      <div className="font-bold text-[#141618] dark:text-white">
+                        {isTh ? 'Blueprint' : 'JSON Spec'}
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between pt-2 border-t border-hairline text-xs font-semibold text-focus">
                     <span>
-                      {isTh ? 'ดูหลักฐาน MT5 และกติกา' : 'Inspect MT5 Proof & Rules'}
+                      {isTh ? 'ดู Blueprint และกติกา MT5' : 'Inspect Blueprint & Rules'}
                     </span>
                     <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
                   </div>

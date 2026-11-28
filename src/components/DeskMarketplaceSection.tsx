@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Search,
-  ShoppingBag,
+  Bookmark,
   ShieldCheck,
   Plus,
   X,
@@ -9,11 +9,13 @@ import {
   Copy,
   Download,
   ArrowUpRight,
+  ExternalLink,
   RotateCcw,
   FileCheck2,
   Trash2,
 } from 'lucide-react';
 import { Language } from '../utils/i18n';
+import { TALLYNX_DESK_APP_URL } from '../utils/navLogic';
 import {
   DESK_IDEAS_CATALOG,
   DeskCategory,
@@ -24,7 +26,6 @@ import {
   VERIFICATION_LABELS,
   VerificationMethod,
   buildDeskConfigExport,
-  calculateLicenseBagTotal,
   createVerifiedDeskIdea,
   filterAndSortDeskIdeas,
   findDeskIdeaFromSearch,
@@ -34,6 +35,16 @@ import { syncDocumentSeo } from '../utils/seoLogic';
 
 interface DeskMarketplaceSectionProps {
   lang: Language;
+}
+
+const DESK_MARKETPLACE_URL = `${TALLYNX_DESK_APP_URL}?page=marketplace`;
+
+function buildDeskMarketplaceIdeaUrl(ideaId: string, lang: Language): string {
+  const url = new URL(DESK_MARKETPLACE_URL);
+  url.searchParams.set('idea', ideaId);
+  url.searchParams.set('lang', lang);
+  url.searchParams.set('source', 'web_blueprint_showcase');
+  return url.toString();
 }
 
 export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
@@ -46,6 +57,7 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
   useEffect(() => {
     syncDocumentSeo('/marketplace', lang, catalog);
   }, [lang, catalog]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [category, setCategory] = useState<DeskCategory>('all');
   const [verificationFilter, setVerificationFilter] = useState<
@@ -59,20 +71,11 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
   });
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // License Bag & Checkout state
-  const [bagItems, setBagItems] = useState<DeskIdeaItem[]>([]);
-  const [bagOpen, setBagOpen] = useState(false);
-  const [buyerEmail, setBuyerEmail] = useState('');
-  const [buyerMt5Id, setBuyerMt5Id] = useState('');
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [completedReceipt, setCompletedReceipt] = useState<{
-    receiptId: string;
-    buyerEmail: string;
-    items: DeskIdeaItem[];
-    totalUsd: number;
-  } | null>(null);
+  // Saved Blueprints drawer state (no fake payment checkout)
+  const [savedItems, setSavedItems] = useState<DeskIdeaItem[]>([]);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Publish Verified Desk-Idea modal state
+  // Local Draft Blueprint modal state
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishErrors, setPublishErrors] = useState<string[]>([]);
   const [publishSuccessTitle, setPublishSuccessTitle] = useState<string | null>(
@@ -84,14 +87,31 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
   const [formCategory, setFormCategory] =
     useState<Exclude<DeskCategory, 'all'>>('custom-engine');
   const [formVerification, setFormVerification] =
-    useState<VerificationMethod>('mt5-investor-sync');
+    useState<VerificationMethod>('ea-local-bridge');
   const [formAccountRef, setFormAccountRef] = useState('');
   const [formBrokerServer, setFormBrokerServer] = useState('');
   const [formMaxDd, setFormMaxDd] = useState('2.1');
   const [formWinRate, setFormWinRate] = useState('58');
   const [formProfitFactor, setFormProfitFactor] = useState('2.15');
-  const [formPrice, setFormPrice] = useState('45');
+  const [formPrice, setFormPrice] = useState('0');
   const [formSummary, setFormSummary] = useState('');
+
+  // Close any open modal/drawer on Escape key
+  useEffect(() => {
+    if (!inspectedItem && !drawerOpen && !publishOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (publishOpen) {
+        setPublishOpen(false);
+      } else if (drawerOpen) {
+        setDrawerOpen(false);
+      } else if (inspectedItem) {
+        setInspectedItem(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [inspectedItem, drawerOpen, publishOpen]);
 
   const filteredItems = useMemo(
     () =>
@@ -104,49 +124,17 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
     [catalog, searchQuery, category, verificationFilter, sortKey]
   );
 
-  const bagSummary = useMemo(() => calculateLicenseBagTotal(bagItems), [bagItems]);
+  const isSaved = (id: string) => savedItems.some((item) => item.id === id);
 
-  const isInBag = (id: string) => bagItems.some((item) => item.id === id);
-
-  const handleAddToBag = (item: DeskIdeaItem) => {
-    setCompletedReceipt(null);
-    if (!isInBag(item.id)) {
-      setBagItems((prev) => [...prev, item]);
+  const handleSaveBlueprint = (item: DeskIdeaItem) => {
+    if (!isSaved(item.id)) {
+      setSavedItems((prev) => [...prev, item]);
     }
-    setBagOpen(true);
+    setDrawerOpen(true);
   };
 
-  const handleRemoveFromBag = (id: string) => {
-    setBagItems((prev) => prev.filter((item) => item.id !== id));
-  };
-
-  const handleCheckout = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmedEmail = buyerEmail.trim();
-    if (!trimmedEmail || !trimmedEmail.includes('@')) {
-      setCheckoutError(
-        isTh
-          ? 'กรอกอีเมลที่ถูกต้องสำหรับใบรับสิทธิ์'
-          : 'Enter a valid email address for the license receipt.'
-      );
-      return;
-    }
-    if (bagItems.length === 0) {
-      setCheckoutError(
-        isTh ? 'ยังไม่มี Desk-Idea ในรายการ' : 'Your license bag is empty.'
-      );
-      return;
-    }
-
-    setCheckoutError(null);
-    const receiptId = `TD-LIC-${Math.floor(100000 + Math.random() * 900000)}`;
-    setCompletedReceipt({
-      receiptId,
-      buyerEmail: trimmedEmail,
-      items: [...bagItems],
-      totalUsd: bagSummary.subtotalUsd,
-    });
-    setBagItems([]);
+  const handleRemoveSaved = (id: string) => {
+    setSavedItems((prev) => prev.filter((item) => item.id !== id));
   };
 
   const handleDownloadConfig = (item: DeskIdeaItem) => {
@@ -155,7 +143,7 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${item.id}-desk-config.json`;
+    link.download = `${item.id}-desk-blueprint.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -163,12 +151,12 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
   };
 
   const handleCopyConfig = (item: DeskIdeaItem) => {
-    navigator.clipboard.writeText(buildDeskConfigExport(item));
+    navigator.clipboard?.writeText(buildDeskConfigExport(item)).catch(() => {});
     setCopiedId(item.id);
-    setTimeout(() => setCopiedId(null), 1800);
+    window.setTimeout(() => setCopiedId(null), 1800);
   };
 
-  const handlePublishSubmit = (e: React.FormEvent) => {
+  const handleDraftSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const input = {
       title: formTitle,
@@ -207,12 +195,14 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
   };
 
   const categories: Array<{ id: DeskCategory; label: string }> = [
-    { id: 'all', label: isTh ? 'ทั้งหมด' : 'All Desks' },
+    { id: 'all', label: isTh ? 'ทั้งหมด' : 'All Blueprints' },
     { id: 'prop-challenge', label: isTh ? 'สอบกองทุน Prop' : 'Prop Challenge' },
     { id: 'discretionary', label: isTh ? 'เทรดมือ / สวิง' : 'Discretionary' },
     { id: 'algorithmic', label: isTh ? 'สาย EA / ระบบ' : 'Algorithmic & EA' },
     { id: 'custom-engine', label: isTh ? 'โต๊ะเทรดอิสระ' : 'Custom Engines' },
   ];
+
+  const deskMarketplaceHref = `${DESK_MARKETPLACE_URL}&lang=${lang}&source=web_marketplace_header`;
 
   return (
     <section
@@ -226,30 +216,43 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
           <div className="max-w-3xl">
             <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-[#2B2D2F] dark:text-neutral-400">
               <span className="font-semibold text-focus">
-                {isTh ? 'TallyNX Marketplace' : 'TallyNX Marketplace'}
+                {isTh ? 'TallyNX Blueprint Showcase' : 'TallyNX Blueprint Showcase'}
               </span>
               <span aria-hidden="true">·</span>
               <span>
                 {isTh
-                  ? 'รองรับทั้ง GHR v3.2 และโครงสร้างโต๊ะเทรดอิสระ'
-                  : 'GHR v3.2 & Custom Desk Setups'}
+                  ? 'ตัวอย่างโครงสร้างโต๊ะเทรดสำหรับ TallyNX Desk'
+                  : 'Interactive Showcase · Real Publishing in TallyNX Desk'}
               </span>
             </div>
 
             <h1 className="mt-2.5 text-3xl font-semibold tracking-[-0.03em] text-[#141618] sm:text-4xl dark:text-white">
               {isTh
-                ? 'เลือกดูชุดตั้งค่าโต๊ะเทรด'
-                : 'Browse trading desk setups'}
+                ? 'สำรวจโครงสร้างโต๊ะเทรดและกติกาความเสี่ยง'
+                : 'Explore trading desk blueprints'}
             </h1>
 
             <p className="mt-3 text-sm leading-relaxed text-[#2B2D2F] dark:text-neutral-400 max-w-2xl">
               {isTh
-                ? 'ตรวจแหล่งข้อมูลของแต่ละชุดได้จาก MT5 Investor Sync แบบอ่านอย่างเดียวหรือแฮชไฟล์ .xlsx ระบบไม่คัดลอกออเดอร์'
-                : 'Review the risk rules, desk layout, and proof source in each listing. Proof uses read-only MT5 data or hashed broker statements. Orders are never copied.'}
+                ? 'หน้านี้แสดงโครงสร้างโต๊ะเทรดตัวอย่างและไฟล์ JSON Spec ที่ออกแบบสำหรับ Live Bridge (.ex5), Cloud API ทางการ หรือแฮชไฟล์ .xlsx การเผยแพร่และโหลดใช้งานจริงทำใน TallyNX Desk โดยไม่มีระบบคัดลอกออเดอร์'
+                : 'Inspect sample desk blueprints, risk rulesets, and JSON specs built for Live Bridge (.ex5), Official Cloud APIs, or hashed .xlsx statements. Real verification, publishing, and loading happen inside TallyNX Desk — zero auto copy-trading.'}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={deskMarketplaceHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="open-desk-marketplace-link"
+              className="desk-primary min-h-9 px-4 text-xs"
+            >
+              <span>
+                {isTh ? 'เปิด Marketplace จริงใน Desk' : 'Open Live Marketplace in Desk'}
+              </span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+
             <button
               type="button"
               data-testid="open-publish-desk-btn"
@@ -261,25 +264,25 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
             >
               <Plus className="h-3.5 w-3.5 text-focus" />
               <span>
-                {isTh ? 'เพิ่ม Desk-Idea' : 'Add Desk-Idea'}
+                {isTh ? 'ร่าง Blueprint (พรีวิว)' : 'Draft Blueprint (Preview)'}
               </span>
             </button>
 
             <button
               type="button"
-              data-testid="open-license-bag-btn"
-              onClick={() => setBagOpen(true)}
-              className="desk-primary min-h-9 px-4 text-xs"
+              data-testid="open-saved-blueprints-btn"
+              onClick={() => setDrawerOpen(true)}
+              className="inline-flex h-9 items-center space-x-2 rounded-lg border border-[#D6D1C7] bg-white px-4 text-xs font-semibold text-[#141618] hover:border-focus hover:bg-[#F8F6F0] dark:border-neutral-700 dark:bg-[#1B1E21] dark:text-white transition whitespace-nowrap cursor-pointer"
             >
-              <ShoppingBag className="h-3.5 w-3.5" />
+              <Bookmark className="h-3.5 w-3.5 text-focus" />
               <span>
-                {isTh ? 'รายการสั่งซื้อ' : 'License Bag'} ({bagSummary.count})
+                {isTh ? 'บันทึกไว้' : 'Saved'} ({savedItems.length})
               </span>
             </button>
           </div>
         </div>
 
-        {/* Publication confirmation notice */}
+        {/* Local draft preview confirmation notice */}
         {publishSuccessTitle && (
           <div
             data-testid="publish-success-banner"
@@ -289,8 +292,8 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
               <FileCheck2 className="mt-0.5 h-4 w-4 text-muted shrink-0" />
               <span>
                 {isTh
-                  ? `เพิ่ม "${publishSuccessTitle}" ลงในรายการบนหน้านี้แล้ว`
-                  : `Added "${publishSuccessTitle}" to the listings on this page.`}
+                  ? `เพิ่มร่างพรีวิว "${publishSuccessTitle}" บนหน้านี้แล้ว (ยังไม่ยืนยันข้อมูลจริง — เปิด TallyNX Desk เพื่อยืนยันและเผยแพร่จริง)`
+                  : `Added local draft preview "${publishSuccessTitle}" on this page (unverified — open TallyNX Desk to verify real MT5 telemetry and publish).`}
               </span>
             </div>
             <button
@@ -312,18 +315,18 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
             </div>
             <div className="mt-1 text-xs text-[#2B2D2F] dark:text-neutral-400">
               {isTh
-                ? 'Desk-Idea ในรายการ'
-                : 'Desk-Idea Listings'}
+                ? 'Blueprint ตัวอย่างในคลัง'
+                : 'Sample Blueprints'}
             </div>
           </div>
           <div className="py-5 pl-4 lg:px-6 border-b lg:border-b-0 lg:border-r border-[#D6D1C7] dark:border-[#2B2D2F]">
             <div className="font-mono tabular-nums text-2xl font-semibold text-[#141618] dark:text-white">
-              100%
+              3 Channels
             </div>
             <div className="mt-1 text-xs text-[#2B2D2F] dark:text-neutral-400">
               {isTh
-                ? 'ระบุแหล่งข้อมูลที่ใช้ยืนยัน'
-                : 'Listings with a Proof Source'}
+                ? 'Live Bridge (.ex5) · Cloud API · .xlsx'
+                : 'Live Bridge (.ex5) · Cloud API · .xlsx'}
             </div>
           </div>
           <div className="py-5 pr-4 lg:px-6 border-r border-[#D6D1C7] dark:border-[#2B2D2F]">
@@ -342,8 +345,8 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
             </div>
             <div className="mt-1 text-xs text-[#2B2D2F] dark:text-neutral-400">
               {isTh
-                ? 'รองรับ GHR v3.2 และ Desk อื่นๆ'
-                : 'GHR v3.2, Custom, EA & Macro'}
+                ? 'Flagship OS, Custom, EA & Macro'
+                : 'Flagship OS, Custom, EA & Macro'}
             </div>
           </div>
         </div>
@@ -354,7 +357,7 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
             {/* Category Segmented Tabs */}
             <div
               role="group"
-              aria-label="Filter Desk-Ideas by trading discipline"
+              aria-label="Filter blueprints by trading discipline"
               className="desk-tabs border-b border-hairline"
             >
               {categories.map((cat) => {
@@ -385,16 +388,16 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={
                     isTh
-                      ? 'ค้นหาชื่อโต๊ะเทรด, คู่เงิน, โบรเกอร์...'
-                      : 'Search title, creator, broker...'
+                      ? 'ค้นหาชื่อโครงสร้างโต๊ะเทรด, คู่เงิน, ช่องทางซิงก์...'
+                      : 'Search blueprint, creator, sync source...'
                   }
-                  aria-label="Search Desk-Ideas"
+                  aria-label="Search Blueprints"
                   className="h-9 w-full rounded-lg border border-[#D6D1C7] bg-white pl-9 pr-3 text-xs text-[#141618] placeholder:text-muted focus:border-focus focus:outline-none dark:border-[#2B2D2F] dark:bg-[#1B1E21] dark:text-white"
                 />
               </div>
 
               <select
-                aria-label="Filter by verification method"
+                aria-label="Filter by verification channel"
                 value={verificationFilter}
                 onChange={(e) =>
                   setVerificationFilter(
@@ -404,21 +407,21 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                 className="h-9 w-full min-w-0 rounded border border-hairline bg-panel px-2 text-xs font-semibold text-[#141618] focus:border-focus focus:outline-none dark:border-[#2B2D2F] dark:bg-[#1B1E21] dark:text-neutral-200 cursor-pointer"
               >
                 <option value="all">
-                  {isTh ? 'แหล่งยืนยันทั้งหมด' : 'All Proofs'}
+                  {isTh ? 'ทุกช่องทางซิงก์' : 'All Channels'}
                 </option>
-                <option value="mt5-investor-sync">
-                  {isTh ? 'MT5 Investor Sync' : 'MT5 Investor Sync'}
+                <option value="ea-local-bridge">
+                  {isTh ? 'Live Bridge (.ex5)' : 'Live Bridge (.ex5)'}
+                </option>
+                <option value="cloud-api-sync">
+                  {isTh ? 'Official Cloud API' : 'Official Cloud API'}
                 </option>
                 <option value="xlsx-sha256">
                   {isTh ? '.xlsx Statement Hash' : '.xlsx Statement Hash'}
                 </option>
-                <option value="ea-local-bridge">
-                  {isTh ? 'Local EA Bridge' : 'Local EA Bridge'}
-                </option>
               </select>
 
               <select
-                aria-label="Sort Desk-Ideas"
+                aria-label="Sort Blueprints"
                 value={sortKey}
                 onChange={(e) =>
                   setSortKey(e.target.value as MarketplaceSortKey)
@@ -426,7 +429,7 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                 className="h-9 w-full min-w-0 rounded border border-hairline bg-panel px-2 text-xs font-semibold text-[#141618] focus:border-focus focus:outline-none dark:border-[#2B2D2F] dark:bg-[#1B1E21] dark:text-neutral-200 cursor-pointer"
               >
                 <option value="featured">
-                  {isTh ? 'เรียงตามยอดนิยม' : 'Most Licensed'}
+                  {isTh ? 'เรียงตามแนะนำ' : 'Featured'}
                 </option>
                 <option value="profit-factor">
                   {isTh ? 'Profit Factor สูงสุด' : 'Highest Profit Factor'}
@@ -435,7 +438,7 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                   {isTh ? 'Drawdown ต่ำสุด' : 'Lowest Max Drawdown'}
                 </option>
                 <option value="price-asc">
-                  {isTh ? 'ราคาต่ำไปสูง' : 'Price: Low to High'}
+                  {isTh ? 'ฟรีขึ้นก่อน' : 'Open Config First'}
                 </option>
               </select>
             </div>
@@ -450,13 +453,13 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
           >
             <p className="text-sm font-bold text-[#141618] dark:text-white">
               {isTh
-                ? 'ไม่พบ Desk-Idea ที่ตรงกับตัวกรองของคุณ'
-                : 'No verified Desk-Ideas match your active filters.'}
+                ? 'ไม่พบ Blueprint ที่ตรงกับตัวกรองของคุณ'
+                : 'No blueprints match your active filters.'}
             </p>
             <p className="mt-1.5 text-xs text-[#2B2D2F] dark:text-neutral-400">
               {isTh
-                ? 'ลองล้างคำค้นหรือเลือกแหล่งยืนยันอื่น'
-                : 'Clear your search or choose a different verification method.'}
+                ? 'ลองล้างคำค้นหรือเลือกช่องทางซิงก์อื่น'
+                : 'Clear your search or choose a different sync channel.'}
             </p>
             <button
               type="button"
@@ -477,8 +480,9 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
             className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
           >
             {filteredItems.map((item) => {
-              const added = isInBag(item.id);
+              const saved = isSaved(item.id);
               const verifLabel = VERIFICATION_LABELS[item.verificationMethod][lang];
+              const isLocalDraft = item.verificationProof.ledgerHash === 'pending-desk-verification';
 
               return (
                 <article
@@ -487,7 +491,7 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                   className="desk-panel flex flex-col justify-between p-4 transition-colors hover:border-focus sm:p-5"
                 >
                   <div>
-                    {/* Quiet Unboxed Inline Metadata (Zero-Pill Rule) */}
+                    {/* Quiet Unboxed Inline Metadata */}
                     <div className="flex flex-wrap items-center gap-1.5 text-xs font-mono text-[#2B2D2F] dark:text-neutral-400">
                       <span className="font-semibold text-focus">
                         {item.engineLabel}
@@ -510,11 +514,11 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                       {isTh ? item.summaryTh : item.summary}
                     </p>
 
-                    {/* Clean Hairline-Divided Quantitative Telemetry Row */}
+                    {/* Clean Hairline-Divided Quantitative Reference Row */}
                     <div className="mt-5 grid grid-cols-3 gap-3 border-y border-[#D6D1C7] py-3.5 dark:border-[#2B2D2F]">
                       <div>
                         <div className="text-[11px] text-[#2B2D2F] dark:text-neutral-400">
-                          {isTh ? 'Max DD จริง' : 'Max DD'}
+                          {isTh ? 'Max DD ตัวอย่าง' : 'Sample DD'}
                         </div>
                         <div className="mt-0.5 font-mono text-sm font-bold tabular-nums text-[#141618] dark:text-white">
                           {item.metrics.maxDrawdownPct.toFixed(2)}%
@@ -530,63 +534,62 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                       </div>
                       <div>
                         <div className="text-[11px] text-[#2B2D2F] dark:text-neutral-400">
-                          {isTh ? 'ดีลจริง' : 'Deals'}
+                          {isTh ? 'สถานะ' : 'Status'}
                         </div>
-                        <div className="mt-0.5 font-mono text-sm font-bold tabular-nums text-[#141618] dark:text-white">
-                          {item.verificationProof.verifiedDealsCount}
+                        <div className="mt-0.5 font-mono text-xs font-bold text-[#141618] dark:text-white">
+                          {isLocalDraft
+                            ? isTh
+                              ? 'ร่างโลคอล'
+                              : 'Local Draft'
+                            : isTh
+                              ? 'Blueprint'
+                              : 'Showcase'}
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Card Footer: Price + Inspect / Acquire */}
-                  <div className="mt-4 flex flex-wrap items-end justify-between gap-3">
-                    <div>
-                      <div className="font-mono text-base font-semibold tabular-nums text-[#141618] dark:text-white">
-                        {item.priceUsd === 0
-                          ? isTh
-                            ? 'ฟรี (Open Config)'
-                            : 'Free'
-                          : `$${item.priceUsd}`}
-                      </div>
-                      <div className="font-mono text-[10px] tabular-nums text-[#2B2D2F] dark:text-neutral-400">
-                        {item.licensesIssued}{' '}
-                        {isTh ? 'ผู้ใช้งาน' : 'licenses issued'}
-                      </div>
-                    </div>
+                  {/* Card Footer: Inspect + Save / Open in Desk */}
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      data-testid={`inspect-idea-${item.id}`}
+                      onClick={() => setInspectedItem(item)}
+                      className="h-8 rounded-lg border border-[#D6D1C7] bg-[#F8F6F0] px-3 text-xs font-semibold text-[#141618] hover:border-focus hover:bg-white dark:border-neutral-700 dark:bg-[#1B1E21] dark:text-neutral-200 transition whitespace-nowrap cursor-pointer"
+                    >
+                      {isTh ? 'ดู Spec & กติกา' : 'Inspect Spec'}
+                    </button>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <button
                         type="button"
-                        data-testid={`inspect-idea-${item.id}`}
-                        onClick={() => setInspectedItem(item)}
-                        className="h-8 rounded-lg border border-[#D6D1C7] bg-[#F8F6F0] px-3 text-xs font-semibold text-[#141618] hover:border-focus hover:bg-white dark:border-neutral-700 dark:bg-[#1B1E21] dark:text-neutral-200 transition whitespace-nowrap cursor-pointer"
-                      >
-                        {isTh ? 'ตรวจหลักฐาน' : 'Inspect Proof'}
-                      </button>
-
-                      <button
-                        type="button"
-                        data-testid={`acquire-idea-${item.id}`}
-                        onClick={() => handleAddToBag(item)}
-                        className={`h-8 rounded-lg px-3.5 text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                          added
-                            ? 'border border-hairline bg-canvas text-ink hover:border-focus'
-                            : 'desk-primary'
+                        data-testid={`save-idea-${item.id}`}
+                        onClick={() => handleSaveBlueprint(item)}
+                        className={`h-8 rounded-lg border px-2.5 text-xs font-semibold transition whitespace-nowrap cursor-pointer ${
+                          saved
+                            ? 'border-focus bg-focus/10 text-focus'
+                            : 'border-hairline bg-canvas text-ink hover:border-focus'
                         }`}
                       >
-                        {added
+                        {saved
                           ? isTh
-                            ? 'อยู่ในรายการ'
-                            : 'In Bag'
-                          : item.priceUsd === 0
-                          ? isTh
-                            ? 'รับฟรี'
-                            : 'Get Free'
+                            ? 'บันทึกแล้ว'
+                            : 'Saved'
                           : isTh
-                          ? 'ซื้อสิทธิ์'
-                          : 'License'}
+                            ? 'บันทึก'
+                            : 'Save'}
                       </button>
+
+                      <a
+                        href={buildDeskMarketplaceIdeaUrl(item.id, lang)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        data-testid={`open-in-desk-${item.id}`}
+                        className="desk-primary h-8 px-3 text-xs"
+                      >
+                        <span>{isTh ? 'เปิดใน Desk' : 'Open in Desk'}</span>
+                        <ArrowUpRight className="h-3 w-3" />
+                      </a>
                     </div>
                   </div>
                 </article>
@@ -596,7 +599,7 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
         )}
       </div>
 
-      {/* Real-Data Proof & Details Modal */}
+      {/* Blueprint Spec & Provenance Modal */}
       {inspectedItem && (
         <div
           role="dialog"
@@ -633,7 +636,7 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
               </div>
               <button
                 type="button"
-                aria-label="Close proof inspector"
+                aria-label="Close blueprint inspector"
                 onClick={() => setInspectedItem(null)}
                 className="rounded-lg p-1.5 text-[#2B2D2F] hover:bg-[#F8F6F0] dark:text-neutral-400 dark:hover:bg-neutral-800 cursor-pointer"
               >
@@ -641,21 +644,21 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
               </button>
             </div>
 
-            {/* Cryptographic & MT5 Provenance Table */}
+            {/* Non-Custodial Provenance Table */}
             <div className="mt-5 space-y-4">
               <div className="flex items-center space-x-2 text-xs font-semibold text-ink">
                 <ShieldCheck className="h-4 w-4 shrink-0" />
                 <span>
                   {isTh
-                    ? 'หลักฐานจากข้อมูลเทรดแบบอ่านอย่างเดียว แฮชช่วยตรวจการแก้ไขย้อนหลัง ระบบไม่คัดลอกออเดอร์'
-                    : 'Read-only trade records. The hash helps check for edits. Orders are never copied.'}
+                    ? 'โครงสร้างกติกาแบบอ่านอย่างเดียว — ไม่มีการคัดลอกออเดอร์อัตโนมัติ การตรวจสอบจริงทำใน TallyNX Desk'
+                    : 'Read-only desk blueprint specification — zero auto copy-trading. Live verification runs inside TallyNX Desk.'}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-4 border-y border-hairline [overflow-wrap:anywhere] py-4 text-xs sm:grid-cols-3 dark:border-[#2B2D2F]">
                 <div>
                   <span className="text-neutral-500 dark:text-neutral-400 block">
-                    {isTh ? 'พอร์ตอ้างอิง' : 'Account'}
+                    {isTh ? 'แหล่งอ้างอิง' : 'Reference Channel'}
                   </span>
                   <span className="mt-0.5 block font-mono font-semibold text-neutral-950 dark:text-white">
                     {inspectedItem.verificationProof.accountMask}
@@ -663,7 +666,7 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                 </div>
                 <div>
                   <span className="text-neutral-500 dark:text-neutral-400 block">
-                    {isTh ? 'เซิร์ฟเวอร์โบรเกอร์' : 'Broker Server'}
+                    {isTh ? 'เซิร์ฟเวอร์ / API' : 'Server / Provider'}
                   </span>
                   <span className="mt-0.5 block font-mono font-semibold text-neutral-950 dark:text-white">
                     {inspectedItem.verificationProof.brokerServer}
@@ -671,7 +674,7 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                 </div>
                 <div>
                   <span className="text-neutral-500 dark:text-neutral-400 block">
-                    {isTh ? 'แฮช Ledger' : 'Ledger Hash'}
+                    {isTh ? 'รหัสอ้างอิง Blueprint' : 'Blueprint Reference'}
                   </span>
                   <span className="mt-0.5 block font-mono font-semibold text-focus break-all">
                     {inspectedItem.verificationProof.ledgerHash}
@@ -679,7 +682,7 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                 </div>
                 <div>
                   <span className="text-neutral-500 dark:text-neutral-400 block">
-                    Win Rate
+                    {isTh ? 'Win Rate ตัวอย่าง' : 'Sample Win Rate'}
                   </span>
                   <span className="mt-0.5 block font-mono font-bold tabular-nums text-[#141618] dark:text-white">
                     {inspectedItem.metrics.winRatePct.toFixed(1)}%
@@ -687,19 +690,18 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                 </div>
                 <div>
                   <span className="text-neutral-500 dark:text-neutral-400 block">
-                    Expectancy
+                    {isTh ? 'Max DD ตัวอย่าง' : 'Sample Max DD'}
                   </span>
-                  <span className="mt-0.5 block font-mono font-bold tabular-nums text-positive">
-                    +{inspectedItem.metrics.expectancyR.toFixed(2)}R
+                  <span className="mt-0.5 block font-mono font-bold tabular-nums text-ink">
+                    {inspectedItem.metrics.maxDrawdownPct.toFixed(2)}%
                   </span>
                 </div>
                 <div>
                   <span className="text-neutral-500 dark:text-neutral-400 block">
-                    {isTh ? 'ระยะเวลาเก็บสถิติ' : 'Tracking Window'}
+                    {isTh ? 'สถานะข้อมูล' : 'Data Status'}
                   </span>
-                  <span className="mt-0.5 block font-mono font-bold tabular-nums text-[#141618] dark:text-white">
-                    {inspectedItem.verificationProof.trackingWindowDays}d (
-                    {inspectedItem.verificationProof.verifiedDealsCount} deals)
+                  <span className="mt-0.5 block font-mono font-semibold text-[#141618] dark:text-white">
+                    {inspectedItem.verificationProof.lastSyncedAt}
                   </span>
                 </div>
               </div>
@@ -708,7 +710,7 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
               <div>
                 <h4 className="text-xs font-semibold text-[#2B2D2F] dark:text-neutral-400">
                   {isTh
-                    ? 'กติกาและโครงสร้างในชุด Desk-Idea นี้'
+                    ? 'กติกาและโครงสร้างใน Blueprint นี้'
                     : 'Included Desk Rules & Guardrails'}
                 </h4>
                 <ul className="mt-2.5 space-y-2 text-xs text-[#141618] dark:text-neutral-300">
@@ -721,74 +723,66 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                 </ul>
               </div>
 
-              {/* Sample Verified Deal Ledger Table */}
-              <div>
-                <h4 className="text-xs font-semibold text-[#2B2D2F] dark:text-neutral-400">
-                  {isTh
-                    ? 'ตัวอย่างรายการเทรดจาก Ledger'
-                    : 'Sample Deals from the Ledger'}
-                </h4>
-                <div className="mt-2.5">
-                  <table className="proof-ledger w-full border-collapse text-xs">
-                    <thead>
-                      <tr className="border-y border-[#D6D1C7] text-[#2B2D2F] dark:border-[#2B2D2F] dark:text-neutral-400 font-mono text-[11px]">
-                        <th className="py-2 pr-3 text-left font-medium">
-                          Ticket
-                        </th>
-                        <th className="py-2 px-3 text-left font-medium">
-                          Symbol
-                        </th>
-                        <th className="py-2 px-3 text-left font-medium">
-                          Side
-                        </th>
-                        <th className="py-2 px-3 text-right font-medium">
-                          Result (R)
-                        </th>
-                        <th className="py-2 pl-3 text-right font-medium">
-                          Max DD
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#D6D1C7] dark:divide-[#2B2D2F]/70">
-                      {inspectedItem.sampleDeals.map((deal) => (
-                        <tr key={deal.ticket}>
-                          <td className="py-2 pr-3 font-mono text-[#2B2D2F] dark:text-neutral-300">
-                            {deal.ticket}
-                          </td>
-                          <td className="py-2 px-3 font-semibold text-[#141618] dark:text-white">
-                            {deal.symbol}
-                          </td>
-                          <td className="py-2 px-3 font-mono text-[#2B2D2F] dark:text-neutral-400">
-                            {deal.side}
-                          </td>
-                          <td
-                            className={`py-2 px-3 text-right font-mono font-semibold tabular-nums ${
-                              deal.rMultiple >= 0
-                                ? 'text-positive'
-                                : 'text-negative'
-                            }`}
-                          >
-                            {deal.rMultiple >= 0 ? '+' : ''}
-                            {deal.rMultiple.toFixed(2)}R
-                          </td>
-                          <td className="py-2 pl-3 text-right font-mono tabular-nums text-[#2B2D2F] dark:text-neutral-400">
-                            {deal.drawdownPct.toFixed(2)}%
-                          </td>
+              {/* Sample Deal Ledger Table (only if sample deals exist — never fabricated on drafts) */}
+              {inspectedItem.sampleDeals.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-[#2B2D2F] dark:text-neutral-400">
+                    {isTh
+                      ? 'ตัวอย่างรายการเทรดประกอบ Blueprint (Sample)'
+                      : 'Illustrative Sample Deals'}
+                  </h4>
+                  <div className="mt-2.5">
+                    <table className="proof-ledger w-full border-collapse text-xs">
+                      <thead>
+                        <tr className="border-y border-[#D6D1C7] text-[#2B2D2F] dark:border-[#2B2D2F] dark:text-neutral-400 font-mono text-[11px]">
+                          <th className="py-2 pr-3 text-left font-medium">Ticket</th>
+                          <th className="py-2 px-3 text-left font-medium">Symbol</th>
+                          <th className="py-2 px-3 text-left font-medium">Side</th>
+                          <th className="py-2 px-3 text-right font-medium">Result (R)</th>
+                          <th className="py-2 pl-3 text-right font-medium">Max DD</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-[#D6D1C7] dark:divide-[#2B2D2F]/70">
+                        {inspectedItem.sampleDeals.map((deal) => (
+                          <tr key={deal.ticket}>
+                            <td className="py-2 pr-3 font-mono text-[#2B2D2F] dark:text-neutral-300">
+                              {deal.ticket}
+                            </td>
+                            <td className="py-2 px-3 font-semibold text-[#141618] dark:text-white">
+                              {deal.symbol}
+                            </td>
+                            <td className="py-2 px-3 font-mono text-[#2B2D2F] dark:text-neutral-400">
+                              {deal.side}
+                            </td>
+                            <td
+                              className={`py-2 px-3 text-right font-mono font-semibold tabular-nums ${
+                                deal.rMultiple >= 0
+                                  ? 'text-positive'
+                                  : 'text-negative'
+                              }`}
+                            >
+                              {deal.rMultiple >= 0 ? '+' : ''}
+                              {deal.rMultiple.toFixed(2)}R
+                            </td>
+                            <td className="py-2 pl-3 text-right font-mono tabular-nums text-[#2B2D2F] dark:text-neutral-400">
+                              {deal.drawdownPct.toFixed(2)}%
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Modal Footer Actions */}
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[#D6D1C7] pt-5 dark:border-[#2B2D2F]">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => handleCopyConfig(inspectedItem)}
-                  className="inline-flex items-center space-x-1.5 rounded-lg border border-[#D6D1C7] bg-white px-4 py-2 text-xs font-semibold text-[#141618] hover:border-focus dark:border-neutral-700 dark:bg-[#1B1E21] dark:text-neutral-200 transition cursor-pointer"
+                  className="inline-flex items-center space-x-1.5 rounded-lg border border-[#D6D1C7] bg-white px-3.5 py-2 text-xs font-semibold text-[#141618] hover:border-focus dark:border-neutral-700 dark:bg-[#1B1E21] dark:text-neutral-200 transition cursor-pointer"
                 >
                   {copiedId === inspectedItem.id ? (
                     <Check className="h-3.5 w-3.5 text-muted" />
@@ -798,49 +792,49 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                   <span>
                     {copiedId === inspectedItem.id
                       ? isTh
-                        ? 'คัดลอก Config แล้ว'
-                        : 'Copied Config'
+                        ? 'คัดลอก JSON แล้ว'
+                        : 'Copied JSON'
                       : isTh
-                      ? 'คัดลอก JSON Config'
-                      : 'Copy JSON Spec'}
+                        ? 'คัดลอก JSON Spec'
+                        : 'Copy JSON Spec'}
                   </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDownloadConfig(inspectedItem)}
+                  className="inline-flex items-center space-x-1.5 rounded-lg border border-[#D6D1C7] bg-white px-3.5 py-2 text-xs font-semibold text-[#141618] hover:border-focus dark:border-neutral-700 dark:bg-[#1B1E21] dark:text-neutral-200 transition cursor-pointer"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>{isTh ? 'ดาวน์โหลด JSON' : 'Download JSON'}</span>
                 </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  const target = inspectedItem;
-                  setInspectedItem(null);
-                  handleAddToBag(target);
-                }}
+              <a
+                href={buildDeskMarketplaceIdeaUrl(inspectedItem.id, lang)}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="desk-primary px-4 py-2.5 text-xs"
               >
                 <span>
-                  {inspectedItem.priceUsd === 0
-                    ? isTh
-                      ? 'รับ Desk Config ฟรี'
-                      : 'Add Free Config to Bag'
-                    : isTh
-                    ? `เพิ่มลงรายการซื้อ ($${inspectedItem.priceUsd})`
-                    : `License Desk-Idea ($${inspectedItem.priceUsd})`}
+                  {isTh ? 'เปิดใช้งานใน TallyNX Desk' : 'Load in TallyNX Desk'}
                 </span>
                 <ArrowUpRight className="h-3.5 w-3.5" />
-              </button>
+              </a>
             </div>
           </div>
         </div>
       )}
 
-      {/* Slide-Over License Bag & Checkout Drawer */}
-      {bagOpen && (
+      {/* Slide-Over Saved Blueprints Drawer (Honest JSON Export & Desk Handoff — No Fake Checkout) */}
+      {drawerOpen && (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Desk-Idea License Bag"
-          data-testid="license-bag-drawer"
+          aria-label="Saved Desk Blueprints"
+          data-testid="saved-blueprints-drawer"
           className="fixed inset-0 z-50 flex justify-end bg-[#141618]/55 backdrop-blur-xs"
-          onClick={() => setBagOpen(false)}
+          onClick={() => setDrawerOpen(false)}
         >
           <div
             className="flex h-full w-full min-w-0 max-w-md flex-col border-l border-hairline bg-panel"
@@ -849,18 +843,18 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
             <div className="flex items-center justify-between border-b border-[#D6D1C7] px-6 py-4 dark:border-[#2B2D2F]">
               <div>
                 <h3 className="text-base font-semibold tracking-tight text-[#141618] dark:text-white">
-                  {isTh ? 'รายการสิทธิ์ Desk-Idea' : 'Desk-Idea License Bag'}
+                  {isTh ? 'Blueprint ที่บันทึกไว้' : 'Saved Blueprints'}
                 </h3>
                 <p className="text-xs text-[#2B2D2F] dark:text-neutral-400">
                   {isTh
-                    ? 'นำเข้ากติกาลงใน TallyNX Desk ของคุณเอง (ไม่ใช่ Copy-Trade)'
-                    : 'Local Desk Configurations · Zero Auto-Execution'}
+                    ? 'ส่งออกไฟล์ JSON หรือเปิดใช้งานต่อใน TallyNX Desk'
+                    : 'Export JSON specs or open directly in TallyNX Desk'}
                 </p>
               </div>
               <button
                 type="button"
-                aria-label="Close license bag"
-                onClick={() => setBagOpen(false)}
+                aria-label="Close saved blueprints"
+                onClick={() => setDrawerOpen(false)}
                 className="rounded p-1.5 text-[#2B2D2F] hover:bg-[#F8F6F0] dark:text-neutral-400 dark:hover:bg-neutral-800 cursor-pointer"
               >
                 <X className="h-4 w-4" />
@@ -868,78 +862,56 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
             </div>
 
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-4 sm:p-6">
-              {completedReceipt ? (
-                <div
-                  data-testid="license-checkout-receipt"
-                  className="space-y-4 rounded-lg border border-hairline bg-canvas p-4 [overflow-wrap:anywhere]"
-                >
-                  <div className="flex items-center space-x-2 text-ink font-semibold text-sm">
-                    <ShieldCheck className="h-4 w-4" />
-                    <span>
-                      {isTh ? 'ออกใบอนุญาตสำเร็จ' : 'License Confirmed'} ·{' '}
-                      {completedReceipt.receiptId}
-                    </span>
-                  </div>
-                  <p className="text-xs text-[#141618] dark:text-neutral-300">
-                    {isTh
-                      ? `ใบรับสิทธิ์ระบุอีเมล ${completedReceipt.buyerEmail} ดาวน์โหลดไฟล์ JSON ด้านล่างเพื่อนำเข้า TallyNX Desk`
-                      : `Receipt email ${completedReceipt.buyerEmail}. Download the JSON files below to import into your TallyNX workspace.`}
-                  </p>
-                  <div className="space-y-2 border-t border-hairline pt-3">
-                    {completedReceipt.items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between gap-2 text-xs"
-                      >
-                        <span className="font-semibold text-[#141618] dark:text-white truncate">
-                          {item.title}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleDownloadConfig(item)}
-                          className="inline-flex items-center space-x-1 rounded border border-[#D6D1C7] bg-white px-3 py-1 text-[11px] font-semibold text-[#141618] hover:border-focus dark:border-neutral-700 dark:bg-[#1B1E21] dark:text-white shrink-0 cursor-pointer"
-                        >
-                          <Download className="h-3 w-3" />
-                          <span>JSON</span>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : bagItems.length === 0 ? (
+              {savedItems.length === 0 ? (
                 <div className="py-16 text-center">
                   <p className="text-sm font-bold text-[#141618] dark:text-white">
-                    {isTh ? 'ยังไม่มีรายการที่เลือก' : 'Your license bag is empty'}
+                    {isTh ? 'ยังไม่มี Blueprint ที่บันทึกไว้' : 'No saved blueprints yet'}
                   </p>
                   <p className="mt-1 text-xs text-[#2B2D2F] dark:text-neutral-400">
                     {isTh
-                      ? 'เลือก Desk-Idea ที่ผ่านการยืนยันข้อมูลจริงเพื่อนำเข้าโต๊ะเทรดของคุณ'
-                      : 'Select any real-data verified Desk-Idea to import its rulebook and sizing ladder.'}
+                      ? 'กดปุ่มบันทึกบนการ์ดเพื่อเก็บไว้เปรียบเทียบและส่งออก JSON'
+                      : 'Save any blueprint from the showcase to export its JSON spec or load it in Desk.'}
                   </p>
                 </div>
               ) : (
                 <>
                   <div className="divide-y divide-[#D6D1C7] border-y border-[#D6D1C7] dark:divide-[#2B2D2F] dark:border-[#2B2D2F]">
-                    {bagItems.map((item) => (
+                    {savedItems.map((item) => (
                       <div
                         key={item.id}
                         className="flex items-start justify-between gap-3 py-4"
                       >
-                        <div className="min-w-0">
+                        <div className="min-w-0 space-y-2">
                           <div className="text-xs font-mono font-semibold text-focus">
                             {item.engineLabel} · {item.creatorHandle}
                           </div>
-                          <div className="mt-0.5 text-sm font-bold text-[#141618] dark:text-white">
+                          <div className="text-sm font-bold text-[#141618] dark:text-white">
                             {item.title}
                           </div>
-                          <div className="mt-1 font-mono text-xs tabular-nums text-[#2B2D2F] dark:text-neutral-400">
-                            {item.priceUsd === 0 ? 'Free' : `$${item.priceUsd}`}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadConfig(item)}
+                              className="inline-flex items-center space-x-1 rounded border border-[#D6D1C7] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#141618] hover:border-focus dark:border-neutral-700 dark:bg-[#1B1E21] dark:text-white cursor-pointer"
+                            >
+                              <Download className="h-3 w-3" />
+                              <span>JSON</span>
+                            </button>
+                            <a
+                              href={buildDeskMarketplaceIdeaUrl(item.id, lang)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center space-x-1 text-[11px] font-semibold text-focus hover:underline"
+                            >
+                              <span>{isTh ? 'เปิดใน Desk' : 'Open in Desk'}</span>
+                              <ArrowUpRight className="h-3 w-3" />
+                            </a>
                           </div>
                         </div>
                         <button
                           type="button"
                           aria-label={`Remove ${item.title}`}
-                          onClick={() => handleRemoveFromBag(item.id)}
+                          onClick={() => handleRemoveSaved(item.id)}
                           className="rounded p-1.5 text-muted hover:bg-[#F8F6F0] hover:text-ink dark:hover:bg-neutral-800 cursor-pointer"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -948,71 +920,19 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                     ))}
                   </div>
 
-                  <form onSubmit={handleCheckout} className="space-y-3 pt-2">
-                    <div>
-                      <label
-                        htmlFor="buyer-email-input"
-                        className="block text-xs font-semibold text-[#141618] dark:text-neutral-300"
-                      >
-                        {isTh ? 'อีเมลสำหรับใบรับสิทธิ์ *' : 'Receipt Email *'}
-                      </label>
-                      <input
-                        id="buyer-email-input"
-                        type="email"
-                        value={buyerEmail}
-                        onChange={(e) => setBuyerEmail(e.target.value)}
-                        placeholder="trader@example.com"
-                        className="mt-1 w-full rounded-lg border border-[#D6D1C7] bg-[#F8F6F0] px-3.5 py-2 text-xs text-[#141618] focus:border-focus focus:bg-white focus:outline-none dark:border-[#2B2D2F] dark:bg-[#1B1E21] dark:text-white"
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="buyer-mt5-input"
-                        className="block text-xs font-semibold text-[#141618] dark:text-neutral-300"
-                      >
-                        {isTh
-                          ? 'เลขพอร์ต MT5 (ไม่บังคับ · ใช้ผูก License)'
-                          : 'Target MT5 Account ID (Optional · License Bind)'}
-                      </label>
-                      <input
-                        id="buyer-mt5-input"
-                        type="text"
-                        value={buyerMt5Id}
-                        onChange={(e) => setBuyerMt5Id(e.target.value)}
-                        placeholder="e.g. 88492015"
-                        className="mt-1 w-full rounded-lg border border-[#D6D1C7] bg-[#F8F6F0] px-3.5 py-2 font-mono text-xs text-[#141618] focus:border-focus focus:bg-white focus:outline-none dark:border-[#2B2D2F] dark:bg-[#1B1E21] dark:text-white"
-                      />
-                    </div>
-
-                    {checkoutError && (
-                      <p className="text-xs font-semibold text-ink">
-                        {checkoutError}
-                      </p>
-                    )}
-
-                    <div className="border-t border-[#D6D1C7] pt-4 dark:border-[#2B2D2F]">
-                      <div className="flex items-center justify-between text-sm font-bold text-[#141618] dark:text-white">
-                        <span>{isTh ? 'ยอดรวมสุทธิ' : 'Total Due'}</span>
-                        <span className="font-mono tabular-nums">
-                          ${bagSummary.subtotalUsd}
-                        </span>
-                      </div>
-                      <button
-                        type="submit"
-                        data-testid="confirm-license-checkout-btn"
-                        className="desk-primary mt-4 w-full py-2.5 text-xs"
-                      >
-                        {bagSummary.subtotalUsd === 0
-                          ? isTh
-                            ? 'รับ Desk Config ทันที'
-                            : 'Claim Free Configs'
-                          : isTh
-                          ? `ยืนยันรับสิทธิ์ ($${bagSummary.subtotalUsd})`
-                          : `Complete License ($${bagSummary.subtotalUsd})`}
-                      </button>
-                    </div>
-                  </form>
+                  <a
+                    href={deskMarketplaceHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="desk-primary w-full py-2.5 text-xs"
+                  >
+                    <span>
+                      {isTh
+                        ? 'ไปที่ TallyNX Desk Marketplace'
+                        : 'Continue in TallyNX Desk Marketplace'}
+                    </span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
                 </>
               )}
             </div>
@@ -1020,7 +940,7 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
         </div>
       )}
 
-      {/* Publish Verified Desk-Idea Modal */}
+      {/* Draft Blueprint Preview Modal */}
       {publishOpen && (
         <div
           role="dialog"
@@ -1041,18 +961,18 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                   className="text-lg font-semibold tracking-tight text-[#141618] dark:text-white"
                 >
                   {isTh
-                    ? 'เพิ่ม Desk-Idea พร้อมแหล่งข้อมูล'
-                    : 'Add Desk-Idea with a Proof Source'}
+                    ? 'ร่าง Blueprint โต๊ะเทรด (พรีวิวในเครื่อง)'
+                    : 'Draft a Desk Blueprint (Local Preview)'}
                 </h3>
                 <p className="mt-1 text-xs text-[#2B2D2F] dark:text-neutral-400">
                   {isTh
-                    ? 'ต้องระบุเลขบัญชี MT5 Investor หรือแฮช SHA-256 ของไฟล์ .xlsx สำหรับชุดที่เพิ่ม'
-                    : 'You must provide an MT5 Investor account reference or the SHA-256 hash of an .xlsx statement.'}
+                    ? 'สร้างโครงสร้าง JSON บนหน้านี้เพื่อทดสอบรูปแบบ สำหรับการยืนยันข้อมูล MT5 และเผยแพร่จริงให้ดำเนินการใน TallyNX Desk'
+                    : 'Create a local draft blueprint card to preview and export JSON. Real MT5 verification and publishing are handled inside TallyNX Desk.'}
                 </p>
               </div>
               <button
                 type="button"
-                aria-label="Close publish form"
+                aria-label="Close draft form"
                 onClick={() => setPublishOpen(false)}
                 className="rounded-lg p-1.5 text-[#2B2D2F] hover:bg-[#F8F6F0] dark:text-neutral-400 dark:hover:bg-neutral-800 cursor-pointer"
               >
@@ -1060,14 +980,14 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handlePublishSubmit} className="mt-5 space-y-4">
+            <form onSubmit={handleDraftSubmit} className="mt-5 space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label
                     htmlFor="pub-title"
                     className="block text-xs font-semibold text-[#141618] dark:text-neutral-300"
                   >
-                    {isTh ? 'ชื่อ Desk-Idea *' : 'Desk-Idea Title *'}
+                    {isTh ? 'ชื่อ Blueprint *' : 'Blueprint Title *'}
                   </label>
                   <input
                     id="pub-title"
@@ -1154,7 +1074,7 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                     htmlFor="pub-verif"
                     className="block text-xs font-semibold text-[#141618] dark:text-neutral-300"
                   >
-                    {isTh ? 'วิธีตรวจข้อมูลจริง *' : 'Verification Source *'}
+                    {isTh ? 'ช่องทางยืนยันใน Desk *' : 'Target Sync Channel *'}
                   </label>
                   <select
                     id="pub-verif"
@@ -1164,11 +1084,9 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                     }
                     className="mt-1 w-full rounded-lg border border-[#D6D1C7] bg-[#F8F6F0] px-3 py-2 text-xs text-[#141618] focus:border-focus focus:outline-none dark:border-[#2B2D2F] dark:bg-[#141618] dark:text-white"
                   >
-                    <option value="mt5-investor-sync">
-                      MT5 Investor Sync
-                    </option>
-                    <option value="xlsx-sha256">.xlsx SHA-256 Hash</option>
-                    <option value="ea-local-bridge">Local EA Bridge</option>
+                    <option value="ea-local-bridge">Live Bridge (.ex5)</option>
+                    <option value="cloud-api-sync">Official Cloud API</option>
+                    <option value="xlsx-sha256">.xlsx Statement Hash</option>
                   </select>
                 </div>
 
@@ -1177,14 +1095,14 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                     htmlFor="pub-account-ref"
                     className="block text-xs font-semibold text-[#141618] dark:text-neutral-300"
                   >
-                    {isTh ? 'เลขพอร์ต / รหัสแฮช *' : 'MT5 ID or Hash *'}
+                    {isTh ? 'รหัสอ้างอิง *' : 'Channel Reference *'}
                   </label>
                   <input
                     id="pub-account-ref"
                     type="text"
                     value={formAccountRef}
                     onChange={(e) => setFormAccountRef(e.target.value)}
-                    placeholder="99201455"
+                    placeholder="Bridge or API ref"
                     className="mt-1 w-full rounded-lg border border-[#D6D1C7] bg-[#F8F6F0] px-3 py-2 font-mono text-xs text-[#141618] focus:border-focus focus:bg-white focus:outline-none dark:border-[#2B2D2F] dark:bg-[#141618] dark:text-white"
                   />
                 </div>
@@ -1194,26 +1112,26 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                     htmlFor="pub-broker"
                     className="block text-xs font-semibold text-[#141618] dark:text-neutral-300"
                   >
-                    {isTh ? 'โบรเกอร์เซิร์ฟเวอร์ *' : 'Broker Server *'}
+                    {isTh ? 'โบรเกอร์ / ผู้ให้บริการ *' : 'Broker / Provider *'}
                   </label>
                   <input
                     id="pub-broker"
                     type="text"
                     value={formBrokerServer}
                     onChange={(e) => setFormBrokerServer(e.target.value)}
-                    placeholder="RawSpread-Live02"
+                    placeholder="e.g. FundedNext-MCP"
                     className="mt-1 w-full rounded-lg border border-[#D6D1C7] bg-[#F8F6F0] px-3 py-2 font-mono text-xs text-[#141618] focus:border-focus focus:bg-white focus:outline-none dark:border-[#2B2D2F] dark:bg-[#141618] dark:text-white"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                 <div>
                   <label
                     htmlFor="pub-dd"
                     className="block text-xs font-semibold text-[#141618] dark:text-neutral-300"
                   >
-                    Max DD (%)
+                    Target Max DD (%)
                   </label>
                   <input
                     id="pub-dd"
@@ -1229,7 +1147,7 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                     htmlFor="pub-wr"
                     className="block text-xs font-semibold text-[#141618] dark:text-neutral-300"
                   >
-                    Win Rate (%)
+                    Ref Win Rate (%)
                   </label>
                   <input
                     id="pub-wr"
@@ -1245,7 +1163,7 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                     htmlFor="pub-pf"
                     className="block text-xs font-semibold text-[#141618] dark:text-neutral-300"
                   >
-                    Profit Factor
+                    Ref Profit Factor
                   </label>
                   <input
                     id="pub-pf"
@@ -1253,22 +1171,6 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                     step="0.05"
                     value={formProfitFactor}
                     onChange={(e) => setFormProfitFactor(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-[#D6D1C7] bg-[#F8F6F0] px-3 py-2 font-mono text-xs text-[#141618] focus:border-focus focus:outline-none dark:border-[#2B2D2F] dark:bg-[#141618] dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="pub-price"
-                    className="block text-xs font-semibold text-[#141618] dark:text-neutral-300"
-                  >
-                    Price (USD)
-                  </label>
-                  <input
-                    id="pub-price"
-                    type="number"
-                    step="1"
-                    value={formPrice}
-                    onChange={(e) => setFormPrice(e.target.value)}
                     className="mt-1 w-full rounded-lg border border-[#D6D1C7] bg-[#F8F6F0] px-3 py-2 font-mono text-xs text-[#141618] focus:border-focus focus:outline-none dark:border-[#2B2D2F] dark:bg-[#141618] dark:text-white"
                   />
                 </div>
@@ -1308,21 +1210,33 @@ export const DeskMarketplaceSection: React.FC<DeskMarketplaceSectionProps> = ({
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-3 border-t border-[#D6D1C7] pt-4 dark:border-[#2B2D2F]">
-                <button
-                  type="button"
-                  onClick={() => setPublishOpen(false)}
-                  className="rounded-lg border border-[#D6D1C7] px-4 py-2 text-xs font-semibold text-[#141618] hover:border-focus dark:border-neutral-700 dark:text-neutral-300 cursor-pointer transition"
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#D6D1C7] pt-4 dark:border-[#2B2D2F]">
+                <a
+                  href={deskMarketplaceHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-focus hover:underline"
                 >
-                  {isTh ? 'ยกเลิก' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  data-testid="submit-publish-desk-btn"
-                  className="desk-primary px-4 py-2 text-xs"
-                >
-                  {isTh ? 'เพิ่มลงรายการ' : 'Add Listing'}
-                </button>
+                  <span>{isTh ? 'ยืนยันและเผยแพร่จริงใน Desk' : 'Verify & Publish in Desk'}</span>
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPublishOpen(false)}
+                    className="rounded-lg border border-[#D6D1C7] px-4 py-2 text-xs font-semibold text-[#141618] hover:border-focus dark:border-neutral-700 dark:text-neutral-300 cursor-pointer transition"
+                  >
+                    {isTh ? 'ยกเลิก' : 'Cancel'}
+                  </button>
+                  <button
+                    type="submit"
+                    data-testid="submit-publish-desk-btn"
+                    className="desk-primary px-4 py-2 text-xs"
+                  >
+                    {isTh ? 'เพิ่มร่างพรีวิว' : 'Add Local Draft'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>

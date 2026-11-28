@@ -15,7 +15,7 @@ import { getNavCategories, getRouteNavigationContext, VALID_APP_ROUTES } from '.
 test('getSeoMetadataForRoute returns branded Marketplace OpenGraph & Twitter tags within length targets', () => {
   const meta = getSeoMetadataForRoute('/marketplace', 'en', 'https://tallynx.example');
 
-  assert.equal(meta.title, 'TallyNX Marketplace – Verified MT5 Trading Desks');
+  assert.equal(meta.title, 'TallyNX Marketplace – MT5 Desk Blueprint Showcase');
   assert.ok(meta.title.length >= 30 && meta.title.length <= 60);
   assert.ok(meta.description.length >= 120 && meta.description.length <= 160);
   assert.equal(meta.canonicalUrl, 'https://tallynx.example/marketplace');
@@ -31,10 +31,10 @@ test('getSeoMetadataForRoute returns branded Marketplace OpenGraph & Twitter tag
   assert.equal(meta.twitterImage, 'https://tallynx.example/og-share.jpg');
 });
 
-test('buildMarketplaceStructuredData creates valid Schema.org CollectionPage + Product ItemList', () => {
+test('buildMarketplaceStructuredData creates valid Schema.org CollectionPage + SoftwareApplication ItemList without fake InStock offers', () => {
   const schema = buildMarketplaceStructuredData(
     DESK_IDEAS_CATALOG,
-    'https://tredyn.example'
+    'https://tallynx.example'
   ) as {
     '@context': string;
     '@type': string;
@@ -46,9 +46,9 @@ test('buildMarketplaceStructuredData creates valid Schema.org CollectionPage + P
         position: number;
         item: {
           '@type': string;
-          sku: string;
+          identifier: string;
           name: string;
-          offers: { '@type': string; price: string; priceCurrency: string };
+          offers?: unknown;
           additionalProperty: Array<{ name: string; value: string }>;
         };
       }>;
@@ -57,33 +57,29 @@ test('buildMarketplaceStructuredData creates valid Schema.org CollectionPage + P
 
   assert.equal(schema['@context'], 'https://schema.org');
   assert.equal(schema['@type'], 'CollectionPage');
-  assert.equal(schema.url, 'https://tredyn.example/marketplace');
+  assert.equal(schema.url, 'https://tallynx.example/marketplace');
   assert.equal(schema.mainEntity['@type'], 'ItemList');
   assert.equal(schema.mainEntity.numberOfItems, DESK_IDEAS_CATALOG.length);
   assert.equal(schema.mainEntity.itemListElement.length, DESK_IDEAS_CATALOG.length);
 
   const first = schema.mainEntity.itemListElement[0];
   assert.equal(first.position, 1);
-  assert.equal(first.item['@type'], 'Product');
-  assert.equal(first.item.sku, DESK_IDEAS_CATALOG[0].id);
-  assert.equal(first.item.offers['@type'], 'Offer');
-  assert.equal(first.item.offers.priceCurrency, 'USD');
-  assert.equal(
-    first.item.offers.price,
-    DESK_IDEAS_CATALOG[0].priceUsd.toFixed(2)
-  );
+  assert.equal(first.item['@type'], 'SoftwareApplication');
+  assert.equal(first.item.identifier, DESK_IDEAS_CATALOG[0].id);
+  assert.equal(first.item.offers, undefined);
   assert.ok(
-    first.item.additionalProperty.some((p) => p.name === 'Verification Method')
+    first.item.additionalProperty.some((p) => p.name === 'Verification Channel')
   );
+  assert.equal(JSON.stringify(schema).includes('InStock'), false);
 });
 
 test('marketplace uses the listing schema and every other core route describes the web app', () => {
   for (const route of VALID_APP_ROUTES) {
-    const schema = buildStructuredDataForRoute(route, 'https://tredyn.example');
+    const schema = buildStructuredDataForRoute(route, 'https://tallynx.example');
     assert.equal(schema['@type'], route === '/marketplace' ? 'CollectionPage' : 'WebApplication');
   }
 
-  const webApp = buildWebApplicationStructuredData('https://tredyn.example');
+  const webApp = buildWebApplicationStructuredData('https://tallynx.example');
   assert.equal(webApp['@context'], 'https://schema.org');
   assert.equal(webApp.applicationCategory, 'FinanceApplication');
   assert.ok(Array.isArray(webApp.featureList) && webApp.featureList.length >= 4);
@@ -125,7 +121,7 @@ test('retired routes and old profile links use the overview canonical and social
   for (const path of ['/brand-film', '/leaderboard/', '/@profile', '/@example-trader', '/missing']) {
     const meta = getSeoMetadataForRoute(path, 'en', origin);
     assert.deepEqual(meta, getSeoMetadataForRoute('/', 'en', origin));
-    assert.equal(new URL(meta.dynamicOgImageUrl).searchParams.get('route'), '/');
+    assert.equal(meta.ogImage, `${origin}/og-share.jpg`);
   }
 });
 
@@ -146,15 +142,16 @@ test('breadcrumbs point to the overview and the actual localized page', () => {
   }
 });
 
-test('SSR uses the canonical, language alternate, and escaped social card URL for every route', () => {
+test('SSR uses the canonical, language alternate, and raster og-share.jpg URL for every route', () => {
   for (const route of VALID_APP_ROUTES) {
     const seo = getSeoMetadataForRoute(route, 'th', origin);
-    const html = renderSsrSeoHeadTags(route, 'th', origin, { ogImageUrl: seo.dynamicOgImageUrl });
+    const html = renderSsrSeoHeadTags(route, 'th', origin);
     assert.ok(html.includes(`rel="canonical" href="${seo.canonicalUrl}"`));
     assert.ok(html.includes(`hreflang="th" href="${seo.alternates.th}"`));
     assert.ok(html.includes('property="og:locale" content="th_TH"'));
-    assert.ok(html.includes(`property="og:image" content="${seo.dynamicOgImageUrl.replace('&', '&amp;')}"`));
-    assert.ok(html.includes('<script id="tredyn-structured-data"'));
+    assert.ok(html.includes(`property="og:image" content="${origin}/og-share.jpg"`));
+    assert.ok(html.includes('property="og:image:type" content="image/jpeg"'));
+    assert.ok(html.includes('<script id="tallynx-structured-data"'));
     assert.ok(html.includes('<script id="tallynx-breadcrumb-data"'));
     assert.ok(!html.includes('profile:username'));
   }

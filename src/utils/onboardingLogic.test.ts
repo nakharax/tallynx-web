@@ -2,8 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DEFAULT_TRANSFER_STATE,
+  MT5_BRIDGE_EX5_URL,
+  MT5_BRIDGE_PING_URL,
   calculateThreeTpLadderPlan,
   buildDeskHandoffUrl,
+  buildSevenDaySummaryFromPositions,
   parseTransferStateFromSearch,
   getSevenDayHealthSummary,
   evaluateTwelveGateReadiness,
@@ -83,10 +86,32 @@ test('Desk URLs retain base queries and hashes and omit sandbox data for plain l
 test('getSevenDayHealthSummary builds valid 7-day telemetry consistent with tier and goal', () => {
   const summary = getSevenDayHealthSummary(DEFAULT_TRANSFER_STATE, 'ex5');
   assert.equal(summary.tierUsed, 'ex5');
+  assert.equal(summary.isRealStatement, false);
   assert.equal(summary.days.length, 7);
   assert.ok(summary.netProfitUsd > 0);
   assert.ok(summary.heartbeatLatencyMs < 1400);
   assert.equal(summary.consistencyPass, true);
+});
+
+test('MT5 Bridge URLs point to canonical desk.tallynx.com endpoints and buildSevenDaySummaryFromPositions computes real metrics', () => {
+  assert.equal(MT5_BRIDGE_PING_URL, 'https://desk.tallynx.com/api/mt5/live-bridge/push');
+  assert.equal(MT5_BRIDGE_EX5_URL, 'https://desk.tallynx.com/scripts/TredynLiveBridge.ex5');
+
+  const summary = buildSevenDaySummaryFromPositions(
+    DEFAULT_TRANSFER_STATE,
+    [
+      { openedAt: Date.parse('2026-11-20T08:00:00Z'), closedAt: Date.parse('2026-11-20T09:00:00Z'), symbol: 'XAUUSD', lots: 0.5, netPnlUsd: 200 },
+      { openedAt: Date.parse('2026-11-21T08:00:00Z'), closedAt: Date.parse('2026-11-21T09:00:00Z'), symbol: 'XAUUSD', lots: 0.5, netPnlUsd: -100 },
+      { openedAt: Date.parse('2026-11-22T08:00:00Z'), closedAt: Date.parse('2026-11-22T09:00:00Z'), symbol: 'XAUUSD', lots: 0.5, netPnlUsd: 300 },
+    ],
+    'statement.csv'
+  );
+  assert.equal(summary.isRealStatement, true);
+  assert.equal(summary.netProfitUsd, 400);
+  assert.equal(summary.days.length, 3);
+  assert.equal(summary.winRatePct, 66.7);
+  assert.equal(summary.bestDaySharePct, 75);
+  assert.equal(summary.consistencyPass, false);
 });
 
 test('evaluateTwelveGateReadiness enforces critical gates before permitting execution readiness', () => {

@@ -722,26 +722,26 @@ export function summarizeDrawdownStream(
 export function getAnalyticsCopy(lang: Language) {
   if (lang === 'th') {
     return {
-      kicker1: 'ระบบตรวจสอบข้อมูล MT5',
-      kicker2: 'TELEMETRY & DRAWDOWN AUDIT',
-      title: 'วิเคราะห์วินัยความเสี่ยงและบันทึก MT5 เชิงลึก',
-      subtitle: 'แผนภาพแบบเรียลไทม์สำหรับตรวจสอบ Drawdown และพฤติกรรมพอร์ตไร้ตัวกลาง',
+      kicker1: 'เดโมวิเคราะห์ข้อมูล MT5 (ชุดข้อมูลตัวอย่าง)',
+      kicker2: 'INTERACTIVE TELEMETRY DEMO · SAMPLE DATASET',
+      title: 'เดโมวิเคราะห์วินัยความเสี่ยงและบันทึก MT5 เชิงลึก',
+      subtitle: 'ตัวอย่างแผนภาพแบบโต้ตอบจากชุดข้อมูลจำลอง 120 ออเดอร์ (Sample Dataset)',
       description:
-        'จำลองรูปแบบการตรวจสอบข้อมูลระดับสถาบันจากบันทึกคำสั่งจริงใน MetaTrader 5 ในเครื่อง พร้อมตารางข้อมูลที่ค้นหาได้ แนวโน้มการถดถอยเชิงเส้น (OLS) และส่งออกไฟล์ CSV ได้ทันที',
+        'หน้านี้แสดงเดโมการตรวจสอบข้อมูลระดับสถาบันด้วยชุดข้อมูลตัวอย่าง 120 ออเดอร์ พร้อมตารางข้อมูลที่ค้นหาได้ แนวโน้มการถดถอยเชิงเส้น (OLS) และส่งออกไฟล์ CSV ได้ทันที — สำหรับพอร์ตจริงของคุณให้เชื่อมต่อผ่าน TallyNX Desk',
       kpis: [
         {
           value: '120',
-          label: 'รายการเทรดที่ตรวจสอบแล้ว',
-          delta: 'บันทึกตรงจาก MT5 Local Bridge',
+          label: 'รายการเทรดในชุดข้อมูลตัวอย่าง',
+          delta: 'Sample Dataset · โหมดสาธิตแบบโต้ตอบ',
         },
         {
           value: '90.0%',
-          label: 'อัตราการรักษาวินัยและใกล้เพดาน',
+          label: 'อัตราการรักษาวินัยในชุดตัวอย่าง',
           delta: '88 รายการอยู่ในกรอบ 100%',
         },
         {
           value: '1,248 ms',
-          label: 'เวลาซิงค์ข้อมูลความเสี่ยงเฉลี่ย',
+          label: 'เวลาซิงค์จำลองเฉลี่ย',
           delta: 'ต่ำกว่าเกณฑ์ 1,400 ms',
         },
         {
@@ -750,9 +750,9 @@ export function getAnalyticsCopy(lang: Language) {
           delta: 'Non-custodial 100%',
         },
       ],
-      matrixTitle: 'เมทริกซ์ตรวจสอบ 120 รายการ (Unit Deal Matrix)',
+      matrixTitle: 'เมทริกซ์ตรวจสอบ 120 รายการตัวอย่าง (Unit Deal Matrix)',
       matrixDesc:
-        'ทุกช่องสี่เหลี่ยมแทน 1 คำสั่งซื้อขายจริงในเทอร์มินัล สลับมุมมองตามสถานะวินัยหรือช่วงตลาด พร้อมตัวกรองแบบโต้ตอบ',
+        'ทุกช่องสี่เหลี่ยมแทน 1 คำสั่งจากชุดข้อมูลตัวอย่าง สลับมุมมองตามสถานะวินัยหรือช่วงตลาด พร้อมตัวกรองแบบโต้ตอบ',
       groupByOutcome: 'แบ่งตามวินัยความเสี่ยง',
       groupBySession: 'แบ่งตามช่วงเวลาตลาด',
       filterAll: 'ทั้งหมด (120)',
@@ -778,21 +778,21 @@ export function getAnalyticsCopy(lang: Language) {
         standard: 'มาตรฐาน 4.0%',
         prop: 'กองทุน 5.0%',
       },
-      waffleUsed: 'ขาดทุนสะสมจริง',
+      waffleUsed: 'ขาดทุนสะสมจำลอง',
       waffleBuffer: 'โซนเตือนล่วงหน้า',
       waffleAvailable: 'งบความเสี่ยงคงเหลือ',
       scatterTitle: 'ความสัมพันธ์เวลาถือออเดอร์กับ Drawdown (OLS Regression)',
       scatterDesc:
-        'คำนวณเส้นแนวโน้มเชิงเส้น (Ordinary Least Squares) จากข้อมูลคำสั่งจริงเพื่อยืนยันผลกระทบของการถือออเดอร์นานเกินช่วงความผันผวน',
+        'คำนวณเส้นแนวโน้มเชิงเส้น (Ordinary Least Squares) จากชุดข้อมูลตัวอย่างเพื่อสาธิตผลกระทบของการถือออเดอร์นานเกินช่วงความผันผวน',
       scatterAll: 'ทุกช่วงตลาด (120)',
       scatterActiveSessions: 'เฉพาะ London + Overlap (74)',
       scatterSlopeLabel: 'ความชัน (Slope)',
       scatterR2Label: 'ค่าสัมประสิทธิ์ R²',
       scatterXAxis: 'ระยะเวลาถือครอง (นาที)',
       scatterYAxis: 'Intraday Drawdown (%)',
-      ledgerTitle: 'ตารางตรวจสอบแยกตามคู่เงินและช่วงตลาด (Telemetry Ledger)',
+      ledgerTitle: 'ตารางตรวจสอบแยกตามคู่เงินและช่วงตลาด (Sample Telemetry Ledger)',
       ledgerDesc:
-        'ค้นหาตามคู่เงินหรือช่วงตลาด กรองสถานะ และคลิกหัวตารางเพื่อเรียงลำดับ พร้อมดาวน์โหลด CSV',
+        'ค้นหาตามคู่เงินหรือช่วงตลาด กรองสถานะ และคลิกหัวตารางเพื่อเรียงลำดับ พร้อมดาวน์โหลด CSV ตัวอย่าง',
       searchPlaceholder: 'ค้นหาคู่เงิน, รหัสชุดข้อมูล หรือช่วงตลาด (เช่น XAUUSD)...',
       statusAll: 'ทุกสถานะ',
       statusNominal: 'ปกติ (Nominal)',
@@ -844,26 +844,26 @@ export function getAnalyticsCopy(lang: Language) {
   }
 
   return {
-    kicker1: 'MT5 TELEMETRY AUDIT',
-    kicker2: 'NON-CUSTODIAL ANALYTICS',
-    title: 'Drawdown Discipline & Deal Telemetry Audit',
-    subtitle: 'Real-time Recharts & interactive SVG audit instruments mapped to local MT5 deal telemetry',
+    kicker1: 'INTERACTIVE TELEMETRY DEMO',
+    kicker2: 'SAMPLE DATASET · 120 SIMULATED DEALS',
+    title: 'Drawdown Discipline & Deal Telemetry Demo',
+    subtitle: 'Interactive telemetry demo (sample dataset) built with Recharts and SVG audit instruments',
     description:
-      'High-signal telemetry visualizations designed with restraint: a 120-deal unit outcome matrix, 10×10 daily loss budget waffle, live OLS regression scatter plot, and a searchable cohort ledger with CSV export.',
+      'Explore an interactive telemetry demo powered by a deterministic 120-deal sample dataset: unit outcome matrix, 10×10 daily loss budget waffle, OLS regression scatter plot, and a searchable cohort ledger with CSV export. Connect your real MT5 account inside TallyNX Desk.',
     kpis: [
       {
         value: '120',
-        label: 'Local MT5 Deals Audited',
-        delta: '100% client-side terminal read',
+        label: 'Sample MT5 Deals (Demo)',
+        delta: 'Deterministic demo dataset',
       },
       {
         value: '90.0%',
         label: 'Within Pre-Session Envelope',
-        delta: '88 strictly disciplined exits',
+        delta: '88 disciplined exits in sample',
       },
       {
         value: '1,248 ms',
-        label: 'Mean Bridge Heartbeat',
+        label: 'Simulated Bridge Heartbeat',
         delta: 'Within 1,400 ms SLA budget',
       },
       {

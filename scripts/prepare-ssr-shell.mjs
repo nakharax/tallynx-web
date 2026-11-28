@@ -17,6 +17,8 @@ const html = fs.readFileSync(indexHtmlPath, 'utf8');
 fs.mkdirSync(path.dirname(apiShellPath), { recursive: true });
 fs.writeFileSync(apiShellPath, html, 'utf8');
 
+// Remove static dist/index.html so Vercel executes the "/" -> "/api/index" SSR rewrite
+// instead of serving an unlocalized static shell directly from CDN.
 fs.unlinkSync(indexHtmlPath);
 if (fs.existsSync(oldDistShellPath)) {
   fs.unlinkSync(oldDistShellPath);

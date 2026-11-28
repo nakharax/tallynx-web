@@ -1,16 +1,16 @@
 {
-  "name": "tredyn-web",
+  "name": "tallynx-web",
   "private": true,
-  "version": "0.1.0",
+  "version": "5.2.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build && node scripts/prepare-ssr-shell.mjs",
     "start": "NODE_ENV=production tsx server.ts",
-    "preview": "vite preview",
+    "preview": "NODE_ENV=production tsx server.ts",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx --test src/utils/*.test.ts"
+    "test": "tsx --test src/utils/*.test.ts server/*.test.ts"
   },
   "dependencies": {
     "@google/genai": "^3.6.1",

@@ -20,7 +20,11 @@ export function usePWAInstall() {
     setIsInstalled(isStandalone);
 
     const userAgent = window.navigator.userAgent.toLowerCase();
-    setIsIOS(/iphone|ipad|ipod/.test(userAgent));
+    const isIpadOS =
+      window.navigator.platform === 'MacIntel' &&
+      typeof window.navigator.maxTouchPoints === 'number' &&
+      window.navigator.maxTouchPoints > 1;
+    setIsIOS(/iphone|ipad|ipod/.test(userAgent) || isIpadOS);
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();

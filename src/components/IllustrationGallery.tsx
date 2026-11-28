@@ -10,7 +10,11 @@ import {
   X,
 } from 'lucide-react';
 import { Language } from '../utils/i18n';
-import { MT5_BRIDGE_DOWNLOAD_FILENAME } from '../utils/onboardingLogic';
+import {
+  MT5_BRIDGE_DOWNLOAD_FILENAME,
+  MT5_BRIDGE_EX5_URL,
+  MT5_BRIDGE_MQ5_URL,
+} from '../utils/onboardingLogic';
 
 export interface Mt5InstallationStep {
   id: 'download' | 'move' | 'webrequest';
@@ -170,27 +174,44 @@ export const IllustrationGallery: React.FC<IllustrationGalleryProps> = ({
             </div>
 
             {step.id === 'download' && (
-              <button
-                type="button"
-                data-testid="download-ex5-btn"
-                onClick={onDownloadEx5}
-                className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-[#141618] px-4 text-xs font-bold text-white hover:bg-accent-solid dark:bg-white dark:text-[#141618] transition cursor-pointer"
-              >
-                {ex5Downloaded ? (
-                  <Check className="h-3.5 w-3.5 text-[#00c07a]" />
-                ) : (
-                  <Download className="h-3.5 w-3.5" />
-                )}
-                <span>
-                  {ex5Downloaded
-                    ? isTh
-                      ? 'ดาวน์โหลดไฟล์แล้ว'
-                      : 'Guide downloaded'
-                    : isTh
-                      ? 'ดาวน์โหลดคู่มือตั้งค่า (.txt)'
-                      : 'Download Setup Guide (.txt)'}
-                </span>
-              </button>
+              <div className="mt-4 space-y-2">
+                <a
+                  href={MT5_BRIDGE_EX5_URL}
+                  download={MT5_BRIDGE_DOWNLOAD_FILENAME}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  data-testid="download-ex5-btn"
+                  onClick={onDownloadEx5}
+                  className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-[#141618] px-4 text-xs font-bold text-white hover:bg-accent-solid dark:bg-white dark:text-[#141618] transition cursor-pointer"
+                >
+                  {ex5Downloaded ? (
+                    <Check className="h-3.5 w-3.5 text-[#00c07a]" />
+                  ) : (
+                    <Download className="h-3.5 w-3.5" />
+                  )}
+                  <span>
+                    {ex5Downloaded
+                      ? isTh
+                        ? 'กำลังดาวน์โหลด Live Bridge (.ex5)'
+                        : 'Downloading Live Bridge (.ex5)'
+                      : isTh
+                        ? 'ดาวน์โหลด Live Bridge (.ex5)'
+                        : 'Download Live Bridge (.ex5)'}
+                  </span>
+                </a>
+                <div className="text-center font-mono text-[10px] text-[#2B2D2F] dark:text-neutral-400">
+                  <a
+                    href={MT5_BRIDGE_MQ5_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline hover:text-focus"
+                  >
+                    {isTh
+                      ? 'ดูโค้ดต้นฉบับที่ตรวจสอบได้ (.mq5)'
+                      : 'Inspect open source (.mq5)'}
+                  </a>
+                </div>
+              </div>
             )}
 
             {step.id === 'move' && (

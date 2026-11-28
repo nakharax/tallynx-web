@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { getDictionary, type Language } from '../utils/i18n';
-import { TREDYN_DESK_URL, TREDYN_MALL_CHAT_URL } from '../utils/navLogic';
+import { TALLYNX_DESK_APP_URL, TREDYN_MALL_CHAT_URL } from '../utils/navLogic';
 import { buildDeskHandoffUrl, type LinkedDeskScreenId, type OnboardingTransferState } from '../utils/onboardingLogic';
 
 export type DeskScreenshotId = LinkedDeskScreenId | 'mall';
@@ -121,13 +121,14 @@ export const RealDeskEmbed: React.FC<RealDeskEmbedProps> = ({
   const deskUrl =
     activeScreen.deskPage === 'mall'
       ? buildDeskHandoffUrl(TREDYN_MALL_CHAT_URL, undefined, { lang, theme: isDark ? 'dark' : 'light' })
-      : buildDeskHandoffUrl(TREDYN_DESK_URL, transferState, {
+      : buildDeskHandoffUrl(TALLYNX_DESK_APP_URL, transferState, {
           lang,
           theme: isDark ? 'dark' : 'light',
           page: activeScreen.deskPage,
           source: 'desk_preview',
         });
-  const openMallLabel = getDictionary(lang).nav.openMall;
+  const navDict = getDictionary(lang).nav;
+  const openTargetLabel = activeScreen.deskPage === 'mall' ? navDict.openMall : navDict.openDesk;
 
   const warmScreenshot = (screen: DeskScreenItem) => {
     if (screen.id === activeId || warmedImages.current.has(screen.id)) return;
@@ -308,7 +309,7 @@ export const RealDeskEmbed: React.FC<RealDeskEmbedProps> = ({
                   rel="noopener noreferrer"
                   className="desk-primary px-3 py-2 text-xs"
                 >
-                  <span>{openMallLabel}</span>
+                  <span>{openTargetLabel}</span>
                   <ExternalLink className="h-3 w-3" />
                 </a>
                 <button

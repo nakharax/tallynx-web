@@ -4,7 +4,7 @@ import path from 'node:path';
 
 const REPO_ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..');
 
-const SCAN_ROOTS = ['src', 'api', 'public', 'server.ts', 'index.html'];
+const SCAN_ROOTS = ['src', 'server', 'api', 'public', 'server.ts', 'index.html'];
 const EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.html', '.json', '.md']);
 
 const FORBIDDEN_CLAIMS = [
@@ -81,7 +81,7 @@ function main() {
     violations.forEach((v) => console.error(`  - ${v}`));
     process.exit(1);
   }
-  console.log('[PASS] All Tredyn Web CI policy gates passed cleanly.');
+  console.log('[PASS] All TallyNX Web CI policy gates passed cleanly.');
 }
 
 main();

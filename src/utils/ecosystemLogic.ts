@@ -52,8 +52,8 @@ export function createInitialSandboxState(): SandboxState {
     events: [
       {
         id: 'seed-1',
-        label: 'Session Baseline · MT5 Investor Read-Only',
-        labelTh: 'ค่าเริ่มต้นของรอบเทรด · MT5 Investor แบบอ่านอย่างเดียว',
+        label: 'Session Baseline · MT5 Live Bridge Read-Only',
+        labelTh: 'ค่าเริ่มต้นของรอบเทรด · MT5 Live Bridge แบบอ่านอย่างเดียว',
         rMultiple: 0.0,
         pnlUsd: 0,
         pnlPct: 0,

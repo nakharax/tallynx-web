@@ -100,8 +100,10 @@ function prefetchRouteChunk(path: AppRoutePath) {
   void PREFETCH_BY_ROUTE[path]();
 }
 
-const STORAGE_THEME_KEY = 'tredyn.theme.v7';
-const STORAGE_LANG_KEY = 'tredyn.lang';
+const STORAGE_THEME_KEY = 'tallynx.theme.v1';
+const LEGACY_STORAGE_THEME_KEY = 'tredyn.theme.v7';
+const STORAGE_LANG_KEY = 'tallynx.lang';
+const LEGACY_STORAGE_LANG_KEY = 'tredyn.lang';
 const DESK_PAGE_BY_ROUTE: Partial<Record<AppRoutePath, DeskPage>> = {
   '/sandbox': 'calc',
   '/onboarding': 'calc',
@@ -115,7 +117,10 @@ export default function App() {
     const requestedTheme = resolveWebTheme(window.location.search);
     if (requestedTheme) return requestedTheme === 'dark';
     try {
-      return window.localStorage.getItem(STORAGE_THEME_KEY) !== 'light';
+      const savedTheme =
+        window.localStorage.getItem(STORAGE_THEME_KEY) ??
+        window.localStorage.getItem(LEGACY_STORAGE_THEME_KEY);
+      return savedTheme !== 'light';
     } catch {
       return true;
     }
@@ -126,7 +131,9 @@ export default function App() {
     if (queryLang === 'en' || queryLang === 'th') return queryLang;
 
     try {
-      const saved = window.localStorage.getItem(STORAGE_LANG_KEY);
+      const saved =
+        window.localStorage.getItem(STORAGE_LANG_KEY) ??
+        window.localStorage.getItem(LEGACY_STORAGE_LANG_KEY);
       if (saved === 'en' || saved === 'th') return saved;
     } catch {
       // Storage may be unavailable in private or restricted contexts.

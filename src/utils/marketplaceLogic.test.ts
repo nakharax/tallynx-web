@@ -10,7 +10,7 @@ import {
   findDeskIdeaFromSearch,
 } from './marketplaceLogic';
 
-test('DESK_IDEAS_CATALOG spans multiple engines beyond GHR v3.2 with real verification metadata', () => {
+test('DESK_IDEAS_CATALOG spans multiple engines with non-custodial channel metadata', () => {
   const engines = new Set(DESK_IDEAS_CATALOG.map((item) => item.engineType));
   assert.ok(engines.has('ghr-v32'));
   assert.ok(engines.has('custom-desk'));
@@ -18,7 +18,7 @@ test('DESK_IDEAS_CATALOG spans multiple engines beyond GHR v3.2 with real verifi
   assert.ok(engines.has('macro-playbook'));
 
   for (const item of DESK_IDEAS_CATALOG) {
-    assert.ok(item.verificationProof.ledgerHash.startsWith('sha256:'));
+    assert.ok(item.verificationProof.ledgerHash.startsWith('sample-blueprint:'));
     assert.ok(item.verificationProof.verifiedDealsCount > 0);
     assert.ok(item.metrics.maxDrawdownPct > 0);
   }
@@ -45,20 +45,20 @@ test('filterAndSortDeskIdeas filters by category, verification method, search qu
   const searchGold = filterAndSortDeskIdeas(DESK_IDEAS_CATALOG, {
     query: 'London Open Gold',
     category: 'all',
-    verificationMethod: 'mt5-investor-sync',
+    verificationMethod: 'cloud-api-sync',
     sortKey: 'featured',
   });
   assert.equal(searchGold.length, 1);
   assert.equal(searchGold[0].id, 'idea-ghr-prop-shield');
 });
 
-test('validateDeskSubmission fails closed when real verification proof or metrics are missing', () => {
+test('validateDeskSubmission fails closed when channel proof reference or metrics are missing', () => {
   const invalidResult = validateDeskSubmission({
     title: 'Ab',
     creatorHandle: '',
     engineType: 'custom-desk',
     category: 'custom-engine',
-    verificationMethod: 'mt5-investor-sync',
+    verificationMethod: 'cloud-api-sync',
     accountOrHashRef: '12',
     brokerServer: '',
     maxDrawdownPct: 0,
@@ -76,41 +76,43 @@ test('validateDeskSubmission fails closed when real verification proof or metric
     creatorHandle: '@dax.desk',
     engineType: 'custom-desk',
     category: 'custom-engine',
-    verificationMethod: 'mt5-investor-sync',
+    verificationMethod: 'ea-local-bridge',
     accountOrHashRef: '99201455',
     brokerServer: 'RawSpread-Live02',
     maxDrawdownPct: 1.9,
     winRatePct: 58,
     profitFactor: 2.15,
-    priceUsd: 45,
-    summary: 'Verified Frankfurt open range desk backed by live MT5 investor ledger.',
+    priceUsd: 0,
+    summary: 'Frankfurt open range blueprint configured for Live Bridge (.ex5) telemetry.',
   });
 
   assert.equal(validResult.valid, true);
   assert.equal(validResult.errors.length, 0);
 });
 
-test('createVerifiedDeskIdea, calculateLicenseBagTotal, and buildDeskConfigExport enforce non-copy-trade boundaries', () => {
+test('createVerifiedDeskIdea creates honest unverified drafts without fake sha256 hashes or synthetic deals', () => {
   const created = createVerifiedDeskIdea(
     {
       title: 'Frankfurt DAX Tight Range Desk',
       creatorHandle: 'dax.desk',
       engineType: 'custom-desk',
       category: 'custom-engine',
-      verificationMethod: 'mt5-investor-sync',
+      verificationMethod: 'ea-local-bridge',
       accountOrHashRef: '99201455',
       brokerServer: 'RawSpread-Live02',
       maxDrawdownPct: 1.9,
       winRatePct: 58,
       profitFactor: 2.15,
       priceUsd: 45,
-      summary: 'Verified Frankfurt open range desk backed by live MT5 investor ledger.',
+      summary: 'Frankfurt open range blueprint configured for Live Bridge (.ex5) telemetry.',
     },
     DESK_IDEAS_CATALOG.length
   );
 
   assert.equal(created.creatorHandle, '@dax.desk');
-  assert.ok(created.verificationProof.ledgerHash.startsWith('sha256:'));
+  assert.equal(created.verificationProof.ledgerHash, 'pending-desk-verification');
+  assert.equal(created.verificationProof.verifiedDealsCount, 0);
+  assert.equal(created.sampleDeals.length, 0);
 
   const bag = calculateLicenseBagTotal([
     created,
@@ -122,6 +124,7 @@ test('createVerifiedDeskIdea, calculateLicenseBagTotal, and buildDeskConfigExpor
   assert.equal(bag.paidCount, 1);
 
   const exported = JSON.parse(buildDeskConfigExport(created));
+  assert.equal(exported.schema, 'tallynx.desk-blueprint/v5.2');
   assert.equal(exported.execution_boundary.auto_copy_trade, false);
   assert.equal(exported.execution_boundary.orders_route, 'LOCAL_MT5_ONLY');
 });

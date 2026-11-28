@@ -449,8 +449,11 @@ export function readOnboardingTransferState(): OnboardingTransferState {
 
 export {
   MT5_BRIDGE_DOWNLOAD_FILENAME,
+  MT5_BRIDGE_EX5_URL,
+  MT5_BRIDGE_MQ5_URL,
   MT5_BRIDGE_PING_URL,
   TWELVE_GATE_ITEMS,
+  buildSevenDaySummaryFromPositions,
   evaluateTwelveGateReadiness,
   getSevenDayHealthSummary,
   playSoftChime,

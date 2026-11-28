@@ -4,6 +4,7 @@ import {
   GEMINI_DECISION_MODEL,
   GEMINI_FLASH_LITE_31,
   GEMINI_FLASH_LITE_35,
+  SAFE_HARBOR_REMINDER,
   executeWithFlashLiteFailover,
   planModelRoute,
   type DecisionClientLike,
@@ -61,6 +62,29 @@ test('planModelRoute routes simple queries to 3.1-flash-lite first and flags sig
   assert.equal(plan.routeTier, 'quick_reply');
   assert.deepEqual(plan.candidateModels, [GEMINI_FLASH_LITE_31, GEMINI_FLASH_LITE_35]);
   assert.equal(plan.asksForTradeSignal, true);
+});
+
+test('planModelRoute enforces Safe Harbor guard even when manual model preference is passed', async () => {
+  const plan35 = await planModelRoute({
+    prompt: 'Give me a buy signal and target price for XAUUSD',
+    preference: GEMINI_FLASH_LITE_35,
+  });
+  assert.equal(plan35.routedBy, 'manual');
+  assert.equal(plan35.asksForTradeSignal, true);
+
+  const plan31Th = await planModelRoute({
+    prompt: 'ขอจุดเข้าทองคำหน่อยครับ แนะนำเข้าตอนนี้เลยไหม',
+    preference: GEMINI_FLASH_LITE_31,
+  });
+  assert.equal(plan31Th.routedBy, 'manual');
+  assert.equal(plan31Th.asksForTradeSignal, true);
+
+  let receivedSuffix = '';
+  await executeWithFlashLiteFailover(plan35, async (_model, suffix) => {
+    receivedSuffix = suffix;
+    return 'Safe harbor response';
+  });
+  assert.equal(receivedSuffix, SAFE_HARBOR_REMINDER);
 });
 
 test('planModelRoute fails open to heuristic when gemini-decision-1 errors', async () => {

@@ -386,6 +386,12 @@ export const CategorizedNavbar: React.FC<CategorizedNavbarProps> = React.memo(({
             className="hidden sm:inline-block mx-0.5 xl:mx-1 h-4 w-px bg-hairline dark:bg-neutral-800 shrink-0"
           />
 
+          {pwaInstall && (
+            <div className="hidden md:inline-flex items-center shrink-0">
+              <PWAInstallButton lang={lang} installState={pwaInstall} compact />
+            </div>
+          )}
+
           <a
             href={deskLaunchUrl}
             target="_blank"

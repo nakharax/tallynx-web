@@ -28,15 +28,28 @@ import {
   persistOnboardingTransferState,
 } from '../utils/onboardingLogic';
 import {
-  MT5_BRIDGE_DOWNLOAD_FILENAME,
   MT5_BRIDGE_PING_URL,
   TWELVE_GATE_ITEMS,
+  buildSevenDaySummaryFromPositions,
   evaluateTwelveGateReadiness,
   getSevenDayHealthSummary,
   playSoftChime,
 } from '../utils/onboardingStepsLogic';
+import {
+  parseMt5HtmlOrCsvStatement,
+  type AutopsyPosition,
+} from '../utils/statementAutopsyPreview';
 import { InstantRiskCalculator } from './InstantRiskCalculator';
 import { IllustrationGallery } from './IllustrationGallery';
+
+type StatementUploadFeedback = 'xlsx' | 'empty' | 'unreadable' | 'wrongType' | null;
+
+function decodeStatementBuffer(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder('utf-16le').decode(bytes);
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder('utf-16be').decode(bytes);
+  return new TextDecoder().decode(bytes);
+}
 
 interface OnboardingFunnelSectionProps {
   lang: Language;
@@ -61,6 +74,8 @@ export const OnboardingFunnelSection: React.FC<OnboardingFunnelSectionProps> = (
     transferState.connectedVia || 'xlsx'
   );
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  const [parsedPositions, setParsedPositions] = useState<AutopsyPosition[] | null>(null);
+  const [uploadFeedback, setUploadFeedback] = useState<StatementUploadFeedback>(null);
   const [cloudProvider, setCloudProvider] =
     useState<CloudProviderId>('fundednext_mcp');
   const [cloudAccountId, setCloudAccountId] = useState<string>('FN-88492015');
@@ -111,22 +126,55 @@ export const OnboardingFunnelSection: React.FC<OnboardingFunnelSectionProps> = (
     setActiveStep(5);
   };
 
-  const handleXlsxUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleStatementUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.currentTarget.value = '';
     if (!file) return;
+
     setUploadedFileName(file.name);
-    window.setTimeout(() => {
+
+    if (/\.xlsx?$/i.test(file.name)) {
+      setParsedPositions(null);
+      setUploadFeedback('xlsx');
+      return;
+    }
+
+    if (!/\.(?:csv|html?)$/i.test(file.name)) {
+      setParsedPositions(null);
+      setUploadFeedback('wrongType');
+      return;
+    }
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const parsed = parseMt5HtmlOrCsvStatement(decodeStatementBuffer(buffer));
+      if (!parsed.positions.length) {
+        setParsedPositions(null);
+        setUploadFeedback('empty');
+        return;
+      }
+      setUploadFeedback(null);
+      setParsedPositions(parsed.positions);
+      if (parsed.initialBalance && parsed.initialBalance >= 500) {
+        updateTransfer({ accountSize: Math.round(parsed.initialBalance), connectedVia: 'xlsx' });
+      }
       completeConnection('xlsx');
-    }, 350);
+    } catch {
+      setParsedPositions(null);
+      setUploadFeedback('unreadable');
+    }
   };
 
-  const handleSampleXlsx = () => {
-    setUploadedFileName('MT5_Report_88492015_7D.xlsx');
+  const handleSamplePreview = () => {
+    setUploadFeedback(null);
+    setParsedPositions(null);
+    setUploadedFileName('Sample_MT5_7D_Preview.csv');
     completeConnection('xlsx');
   };
 
   const handleCloudConnect = () => {
     if (!cloudAccountId.trim()) return;
+    setParsedPositions(null);
     setIsSyncingCloud(true);
     window.setTimeout(() => {
       setIsSyncingCloud(false);
@@ -136,25 +184,6 @@ export const OnboardingFunnelSection: React.FC<OnboardingFunnelSectionProps> = (
 
   const handleDownloadEx5 = () => {
     setEx5Downloaded(true);
-    // Provide a lightweight real setup manifest download for immediate tactile confirmation
-    const stubInfo = [
-      '// TallyNX MT5 Bridge v4.0 Setup Helper',
-      `// Endpoint: ${MT5_BRIDGE_PING_URL}`,
-      `// Target Account Size: $${transferState.accountSize}`,
-      `// Risk Mode: ${transferState.mode.toUpperCase()}`,
-      '// Copy TallyNX_Bridge_v4.ex5 into MQL5/Experts and allow WebRequest to telemetry.tallynx.com',
-    ].join('\n');
-    try {
-      const blob = new Blob([stubInfo], { type: 'text/plain;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${MT5_BRIDGE_DOWNLOAD_FILENAME}.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch {
-      // Ignore download restrictions in headless sandboxes
-    }
   };
 
   const handleCopyBridgeUrl = () => {
@@ -164,6 +193,7 @@ export const OnboardingFunnelSection: React.FC<OnboardingFunnelSectionProps> = (
   };
 
   const handleTriggerMt5Ping = () => {
+    setParsedPositions(null);
     setMt5ListeningState('connected');
     if (!audioMuted) {
       playSoftChime();
@@ -180,12 +210,23 @@ export const OnboardingFunnelSection: React.FC<OnboardingFunnelSectionProps> = (
   };
 
   const healthSummary = useMemo(
-    () => getSevenDayHealthSummary(transferState, connectedTier),
-    [transferState, connectedTier]
+    () =>
+      connectedTier === 'xlsx' && parsedPositions && parsedPositions.length > 0 && uploadedFileName
+        ? buildSevenDaySummaryFromPositions(transferState, parsedPositions, uploadedFileName)
+        : getSevenDayHealthSummary(transferState, connectedTier),
+    [transferState, connectedTier, parsedPositions, uploadedFileName]
   );
   const gateEval = useMemo(
     () => evaluateTwelveGateReadiness(checkedGates),
     [checkedGates]
+  );
+  const deskXlsxHandoffUrl = useMemo(
+    () =>
+      buildDeskHandoffUrl(`${TALLYNX_DESK_APP_URL}?page=analysis&source=web_xlsx_handoff`, transferState, {
+        lang,
+        theme: isDark ? 'dark' : 'light',
+      }),
+    [transferState, lang, isDark]
   );
   const finalDeskUrl = useMemo(
     () => buildDeskHandoffUrl(TALLYNX_DESK_APP_URL, transferState, {
@@ -651,7 +692,7 @@ export const OnboardingFunnelSection: React.FC<OnboardingFunnelSectionProps> = (
 
             {/* Active Tier Action Panel */}
             <div className="desk-panel p-6 sm:p-8">
-              {/* TIER 1 ACTIVE CONTENT (.xlsx Instant) */}
+              {/* TIER 1 ACTIVE CONTENT (CSV/HTML local parser + .xlsx Desk handoff) */}
               {selectedTier === 'xlsx' && (
                 <div
                   data-testid="tier-panel-xlsx"
@@ -660,26 +701,26 @@ export const OnboardingFunnelSection: React.FC<OnboardingFunnelSectionProps> = (
                   <div className="lg:col-span-7 space-y-4">
                     <div className="text-xs font-mono font-semibold text-[#00c07a]">
                       {isTh
-                        ? 'Tier 1 · อัปโหลด .xlsx ทันที (ไม่ต้องล็อกอินพอร์ต)'
-                        : 'Tier 1 · Zero-Install .xlsx Statement Import'}
+                        ? 'Tier 1 · นำเข้าไฟล์รายงาน MT5 (.csv / .html อ่านในเครื่อง · .xlsx เปิดใน Desk)'
+                        : 'Tier 1 · Zero-Install MT5 Statement Import (.csv/.html local · .xlsx in Desk)'}
                     </div>
                     <h3 className="text-xl font-semibold text-[#141618] dark:text-white">
                       {isTh
-                        ? 'เลือกไฟล์ Report History (.xlsx / .csv) จาก MT5 หรือทดลองข้อมูลตัวอย่าง'
-                        : 'Choose an MT5 report (.xlsx or .csv) or use the sample ledger'}
+                        ? 'อัปโหลดไฟล์รายงาน MT5 (.csv / .htm / .html) เพื่อวิเคราะห์ทันทีในเครื่อง หรือดูตัวอย่างเดโม'
+                        : 'Upload an MT5 statement (.csv, .htm, .html) to parse locally, or load a sample preview'}
                     </h3>
                     <p className="text-sm text-[#2B2D2F] dark:text-neutral-400">
                       {isTh
-                        ? 'เลือกไฟล์เพื่อทดลองขั้นตอนนำเข้า ระบบจะแสดงผลสรุป 7 วันจากข้อมูลตัวอย่าง'
-                        : 'Try the file selection flow and preview a seven-day discipline audit using sample data.'}
+                        ? 'ไฟล์ .csv และ .htm/.html จะถูกคำนวณผลสรุปจริงบนอุปกรณ์ของคุณโดยไม่ส่งขึ้นเซิร์ฟเวอร์ ส่วนไฟล์ .xlsx สามารถส่งต่อไปวิเคราะห์เต็มรูปแบบใน TallyNX Desk ได้ทันที'
+                        : 'CSV and HTML reports are parsed directly in your browser with real trade metrics. For binary .xlsx workbooks, open the dedicated TallyNX Desk analyzer.'}
                     </p>
 
                     <div className="flex flex-wrap items-center gap-3 pt-2">
                       <input
                         ref={fileInputRef}
                         type="file"
-                        accept=".xlsx,.xls,.csv"
-                        onChange={handleXlsxUpload}
+                        accept=".csv,.htm,.html,.xlsx,.xls"
+                        onChange={(e) => void handleStatementUpload(e)}
                         className="hidden"
                       />
                       <button
@@ -691,25 +732,79 @@ export const OnboardingFunnelSection: React.FC<OnboardingFunnelSectionProps> = (
                         <Upload className="h-4 w-4" />
                         <span>
                           {isTh
-                            ? 'เลือกไฟล์ .xlsx จากเครื่อง'
-                            : 'Select .xlsx Report File'}
+                            ? 'เลือกไฟล์รายงาน (.csv / .html / .xlsx)'
+                            : 'Select MT5 Report (.csv / .html / .xlsx)'}
                         </span>
                       </button>
 
                       <button
                         type="button"
                         data-testid="xlsx-sample-btn"
-                        onClick={handleSampleXlsx}
+                        onClick={handleSamplePreview}
                         className="inline-flex h-10 items-center gap-2 rounded-lg border border-focus bg-focus/10 px-4 text-xs font-bold text-focus hover:bg-accent-solid hover:text-white transition cursor-pointer"
                       >
                         <FileSpreadsheet className="h-4 w-4" />
                         <span>
                           {isTh
-                            ? 'ใช้ไฟล์ตัวอย่าง .xlsx (ทดลองดูผลทันที)'
-                            : 'Load Sample .xlsx Statement (Instant Preview)'}
+                            ? 'ดูตัวอย่างเดโม (ข้อมูลจำลอง 7 วัน)'
+                            : 'Load Sample Preview (Demo Dataset)'}
                         </span>
                       </button>
                     </div>
+
+                    {uploadFeedback && (
+                      <div
+                        role="status"
+                        data-testid="onboarding-upload-feedback"
+                        className="rounded-xl border border-hairline bg-canvas p-4 space-y-2.5 text-xs"
+                      >
+                        {uploadFeedback === 'xlsx' && (
+                          <>
+                            <p className="font-semibold text-[#141618] dark:text-white">
+                              {isTh
+                                ? `ตรวจพบไฟล์เวิร์กบุ๊ก Excel (${uploadedFileName}) — หน้าเว็บไม่ทิ้งไฟล์ของคุณ แต่ตัวอ่าน .xlsx เต็มรูปแบบอยู่ใน TallyNX Desk`
+                                : `Excel workbook detected (${uploadedFileName}) — we will not discard or fake-parse it here. Full .xlsx workbook parsing runs inside TallyNX Desk.`}
+                            </p>
+                            <a
+                              href={deskXlsxHandoffUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              data-testid="onboarding-xlsx-desk-handoff"
+                              className="inline-flex h-9 items-center gap-2 rounded-lg bg-accent-solid px-3.5 text-xs font-bold text-white hover:brightness-95 transition"
+                            >
+                              <FileSpreadsheet className="h-4 w-4 shrink-0" />
+                              <span>
+                                {isTh
+                                  ? 'เปิดใน TallyNX Desk (ตัววิเคราะห์ .xlsx)'
+                                  : 'Open in TallyNX Desk (.xlsx Analyzer)'}
+                              </span>
+                              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                            </a>
+                          </>
+                        )}
+                        {uploadFeedback === 'empty' && (
+                          <p className="text-ink">
+                            {isTh
+                              ? 'ไม่พบรายการเทรดที่ปิดแล้วในไฟล์นี้ โปรดส่งออกรายงาน MT5 ที่มีตาราง Positions หรือ Deals แล้วลองอีกครั้ง'
+                              : 'No closed trades were found in this file. Export an MT5 report containing closed positions or matched deals and try again.'}
+                          </p>
+                        )}
+                        {uploadFeedback === 'unreadable' && (
+                          <p className="text-ink">
+                            {isTh
+                              ? 'ไม่สามารถอ่านไฟล์นี้ได้ โปรดลองส่งออกไฟล์จาก MetaTrader 5 ใหม่อีกครั้ง'
+                              : 'This file could not be read. Try exporting the report again from MetaTrader 5.'}
+                          </p>
+                        )}
+                        {uploadFeedback === 'wrongType' && (
+                          <p className="text-ink">
+                            {isTh
+                              ? 'รองรับไฟล์ .csv, .htm, .html (วิเคราะห์ทันทีบนเว็บ) และ .xlsx/.xls (ส่งต่อเข้า TallyNX Desk)'
+                              : 'Supported formats: .csv, .htm, .html (parsed locally) and .xlsx/.xls (handoff to TallyNX Desk).'}
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="lg:col-span-5 space-y-2.5">
@@ -718,8 +813,8 @@ export const OnboardingFunnelSection: React.FC<OnboardingFunnelSectionProps> = (
                         src="/assets/mt5-guide/tier1-xlsx-import.gif"
                         alt={
                           isTh
-                            ? 'ภาพเคลื่อนไหว 5 วินาที: อัปโหลดไฟล์ .xlsx เพื่อวิเคราะห์กราฟวินัย 7 วันทันที'
-                            : '5-second auto-looping walkthrough: Drop .xlsx trade report to parse 7-day consistency instantly'
+                            ? 'ภาพเคลื่อนไหว 5 วินาที: อัปโหลดไฟล์รายงาน MT5 เพื่อวิเคราะห์กราฟวินัย 7 วันทันที'
+                            : '5-second auto-looping walkthrough: Drop MT5 trade report to parse 7-day consistency instantly'
                         }
                         data-testid="tier1-xlsx-gif"
                         width={600}
@@ -735,7 +830,13 @@ export const OnboardingFunnelSection: React.FC<OnboardingFunnelSectionProps> = (
                           (isTh ? 'พร้อมรับไฟล์ MT5 Trade History' : 'Ready for MT5 Trade History')}
                       </div>
                       <span className="font-mono text-[10px] font-semibold text-[#00c07a] shrink-0">
-                        {isTh ? 'ข้อมูลตัวอย่าง' : 'Sample data'}
+                        {parsedPositions
+                          ? isTh
+                            ? 'อ่านจากไฟล์จริง'
+                            : 'Parsed locally'
+                          : isTh
+                            ? 'ตัวอย่าง / โลคอล'
+                            : 'Local or Demo'}
                       </span>
                     </div>
                   </div>
@@ -980,16 +1081,20 @@ export const OnboardingFunnelSection: React.FC<OnboardingFunnelSectionProps> = (
                 </div>
                 <div>
                   <div className="font-mono text-xs font-bold text-[#009c63] dark:text-emerald-400">
-                    {isTh ? 'ขั้นตอนที่ 5 · สรุปพอร์ต 7 วัน' : 'Step 5 · Seven-Day Account Summary'} ·{' '}
-                    {healthSummary.heartbeatLatencyMs} ms
+                    {isTh ? 'ขั้นตอนที่ 5 · สรุปพอร์ต 7 วัน' : 'Step 5 · Seven-Day Account Summary'}
+                    {healthSummary.heartbeatLatencyMs > 0 ? ` · ${healthSummary.heartbeatLatencyMs} ms` : ''}
                   </div>
                   <h2 className="mt-1 text-xl font-semibold text-[#141618] dark:text-white">
                     {isTh ? healthSummary.sourceLabelTh : healthSummary.sourceLabelEn}
                   </h2>
                   <p className="mt-1 text-xs text-[#2B2D2F] dark:text-neutral-300">
-                    {isTh
-                      ? `สรุป 7 วันจากข้อมูลตัวอย่างสำหรับพอร์ต $${transferState.accountSize.toLocaleString()} (${transferState.mode === 'prop' ? 'โหมดสอบกองทุน 40%' : 'พอร์ตส่วนตัว'})`
-                      : `Sample seven-day results for a $${transferState.accountSize.toLocaleString()} account (${transferState.mode === 'prop' ? 'Prop 40% Rule' : 'Personal Account'}).`}
+                    {healthSummary.isRealStatement
+                      ? isTh
+                        ? `คำนวณจากไฟล์จริงบนเครื่องสำหรับพอร์ต $${transferState.accountSize.toLocaleString()} (${transferState.mode === 'prop' ? 'โหมดสอบกองทุน 40%' : 'พอร์ตส่วนตัว'})`
+                        : `Computed locally from your uploaded report for a $${transferState.accountSize.toLocaleString()} account (${transferState.mode === 'prop' ? 'Prop 40% Rule' : 'Personal Account'}).`
+                      : isTh
+                        ? `สรุป 7 วันจากข้อมูลตัวอย่าง (เดโม) สำหรับพอร์ต $${transferState.accountSize.toLocaleString()} (${transferState.mode === 'prop' ? 'โหมดสอบกองทุน 40%' : 'พอร์ตส่วนตัว'})`
+                        : `Sample seven-day preview (demo dataset) for a $${transferState.accountSize.toLocaleString()} account (${transferState.mode === 'prop' ? 'Prop 40% Rule' : 'Personal Account'}).`}
                   </p>
                 </div>
               </div>
@@ -1011,8 +1116,16 @@ export const OnboardingFunnelSection: React.FC<OnboardingFunnelSectionProps> = (
                   <div className="text-xs text-[#2B2D2F] dark:text-neutral-400">
                     {isTh ? 'กำไรสุทธิ 7 วันล่าสุด' : '7-Day Net P&L'}
                   </div>
-                  <div className="mt-1 font-mono text-2xl font-semibold tabular-nums text-[#00c07a]">
-                    +${healthSummary.netProfitUsd.toLocaleString('en-US')} (+
+                  <div
+                    className={`mt-1 font-mono text-2xl font-semibold tabular-nums ${
+                      healthSummary.netProfitUsd >= 0
+                        ? 'text-[#00c07a]'
+                        : 'text-rose-600 dark:text-rose-400'
+                    }`}
+                  >
+                    {healthSummary.netProfitUsd >= 0 ? '+' : '-'}$
+                    {Math.abs(healthSummary.netProfitUsd).toLocaleString('en-US')} (
+                    {healthSummary.netReturnPct >= 0 ? '+' : ''}
                     {healthSummary.netReturnPct}%)
                   </div>
                 </div>
@@ -1023,7 +1136,13 @@ export const OnboardingFunnelSection: React.FC<OnboardingFunnelSectionProps> = (
                   </div>
                   <div className="mt-1 font-mono text-2xl font-semibold tabular-nums text-[#141618] dark:text-white">
                     {healthSummary.bestDaySharePct}%{' '}
-                    <span className="text-xs font-semibold text-[#00c07a]">
+                    <span
+                      className={`text-xs font-semibold ${
+                        healthSummary.consistencyPass
+                          ? 'text-[#00c07a]'
+                          : 'text-amber-600 dark:text-amber-400'
+                      }`}
+                    >
                       {healthSummary.consistencyPass ? 'PASS' : 'WATCH'}
                     </span>
                   </div>
@@ -1048,25 +1167,25 @@ export const OnboardingFunnelSection: React.FC<OnboardingFunnelSectionProps> = (
                 </div>
               </div>
 
-              {/* 7 Daily Columns (single hairline-divided table strip — zero nested 7-card clutter) */}
+              {/* 7 Daily Columns (responsive grid so narrow 320–375px screens never overflow) */}
               <div>
-                <div className="flex items-center justify-between text-xs mb-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs mb-3">
                   <span className="font-semibold text-[#141618] dark:text-white">
                     {isTh
-                      ? 'รายละเอียดผลลัพธ์รายวัน 7 วันแรก'
-                      : 'Initial 7-Day Performance Breakdown'}
+                      ? 'รายละเอียดผลลัพธ์รายวัน (ล่าสุด 7 วัน)'
+                      : 'Recent 7-Day Performance Breakdown'}
                   </span>
                   <span className="font-mono text-[#2B2D2F] dark:text-neutral-400">
                     Max DD Used: {healthSummary.maxDrawdownUsedPct}%
                   </span>
                 </div>
-                <div className="grid grid-cols-7 divide-x divide-[#D6D1C7] overflow-hidden rounded-xl border border-[#D6D1C7] bg-[#F8F6F0]/60 dark:divide-neutral-800 dark:border-neutral-800 dark:bg-[#141618]/60">
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-px overflow-hidden rounded-xl border border-[#D6D1C7] bg-[#D6D1C7] dark:border-neutral-800 dark:bg-neutral-800">
                   {healthSummary.days.map((d) => (
                     <div
                       key={d.dayLabel}
-                      className="p-2.5 text-center"
+                      className="bg-[#F8F6F0] dark:bg-[#141618] p-2.5 text-center"
                     >
-                      <div className="text-[11px] font-medium text-[#2B2D2F] dark:text-neutral-400">
+                      <div className="text-[11px] font-medium text-[#2B2D2F] dark:text-neutral-400 truncate">
                         {d.dayLabel}
                       </div>
                       <div
@@ -1079,7 +1198,7 @@ export const OnboardingFunnelSection: React.FC<OnboardingFunnelSectionProps> = (
                         {d.pnlUsd >= 0 ? `+$${d.pnlUsd}` : `-$${Math.abs(d.pnlUsd)}`}
                       </div>
                       <div className="mt-0.5 font-mono text-[10px] text-[#5C5852]">
-                        {d.trades} trades
+                        {d.trades} {isTh ? 'ไม้' : 'trades'}
                       </div>
                     </div>
                   ))}

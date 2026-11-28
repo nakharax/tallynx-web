@@ -119,7 +119,13 @@ export const DrawdownSandbox: React.FC<DrawdownSandboxProps> = ({ isDark, lang }
             step={0.5}
             value={dailyPct}
             aria-label={isTh ? 'เพดานขาดทุนรายวัน' : 'Daily loss limit'}
-            onChange={(e) => setDailyPct(parseFloat(e.target.value))}
+            onChange={(e) => {
+              const nextPct = parseFloat(e.target.value);
+              setDailyPct(nextPct);
+              setSessionLoss((prev) =>
+                Math.min(prev, Math.round(balance * (nextPct / 100) * 1.15))
+              );
+            }}
             className="w-full h-2 rounded-lg accent-focus bg-canvas dark:bg-neutral-800 cursor-pointer mt-2"
           />
         </div>

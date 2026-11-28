@@ -161,7 +161,7 @@ export const AnalyticsDashboardSection: React.FC<
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `tredyn-mt5-telemetry-${statusFilter}.csv`;
+    a.download = `tallynx-mt5-telemetry-${statusFilter}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

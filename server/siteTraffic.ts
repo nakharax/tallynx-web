@@ -195,7 +195,9 @@ function emptySiteState(dayKey: string): MemorySiteState {
   return { total: 0, dayKey, today: 0, seenToday: [], online: {} };
 }
 
-function createMemoryTrafficStore(filePath: string) {
+const MAX_MEMORY_ONLINE_ENTRIES = 5000;
+
+export function createMemoryTrafficStore(filePath: string) {
   let state: MemoryStoreShape | null = null;
 
   function load(dayKey: string): MemoryStoreShape {
@@ -237,17 +239,26 @@ function createMemoryTrafficStore(filePath: string) {
         delete siteState.online[sid];
       }
     }
+    const onlineKeys = Object.keys(siteState.online);
+    if (onlineKeys.length > MAX_MEMORY_ONLINE_ENTRIES) {
+      const sorted = onlineKeys.sort((a, b) => (siteState.online[a] ?? 0) - (siteState.online[b] ?? 0));
+      for (const staleKey of sorted.slice(0, onlineKeys.length - MAX_MEMORY_ONLINE_ENTRIES)) {
+        delete siteState.online[staleKey];
+      }
+    }
     if (siteState.seenToday.length > 5000) {
       siteState.seenToday = siteState.seenToday.slice(-2500);
     }
   }
 
   return function recordAndReadMemory(
-    site: TrafficSiteId,
-    sessionId: string | null,
+    rawSite: unknown,
+    rawSessionId: unknown,
     pageView: boolean,
     nowMs: number
   ): SiteTrafficSnapshot {
+    const site = normalizeTrafficSite(rawSite, 'web');
+    const sessionId = normalizeSessionId(rawSessionId);
     const dayKey = getBangkokDayKey(nowMs);
     const cutoffMs = nowMs - ONLINE_WINDOW_MS;
     const store = load(dayKey);
@@ -289,6 +300,13 @@ function createMemoryTrafficStore(filePath: string) {
   };
 }
 
+function clampRawInputString(value: unknown, maxLen: number): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > maxLen) return null;
+  return trimmed;
+}
+
 export function createSiteTrafficRouter(options: {
   defaultSite?: TrafficSiteId;
   env?: NodeJS.ProcessEnv;
@@ -309,7 +327,8 @@ export function createSiteTrafficRouter(options: {
 
   router.get('/telemetry/traffic', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
-    const site = normalizeTrafficSite(req.query.site, defaultSite);
+    const rawSite = clampRawInputString(req.query.site, 32);
+    const site = normalizeTrafficSite(rawSite, defaultSite);
     const nowMs = now();
     const redisConfig = resolveUpstashConfig(env);
 
@@ -330,9 +349,11 @@ export function createSiteTrafficRouter(options: {
   router.post('/telemetry/traffic', async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     const body = (req.body && typeof req.body === 'object' ? req.body : {}) as Record<string, unknown>;
-    const site = normalizeTrafficSite(body.site, defaultSite);
+    const rawSite = clampRawInputString(body.site, 32);
+    const site = normalizeTrafficSite(rawSite, defaultSite);
     const isBot = isLikelyBotUserAgent(req.headers['user-agent']);
-    const sessionId = isBot ? null : normalizeSessionId(body.sessionId);
+    const rawSessionId = clampRawInputString(body.sessionId, 64);
+    const sessionId = isBot ? null : normalizeSessionId(rawSessionId);
     const pageView = !isBot && body.pageView === true && Boolean(sessionId);
     const nowMs = now();
     const redisConfig = resolveUpstashConfig(env);

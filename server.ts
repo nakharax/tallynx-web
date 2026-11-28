@@ -49,24 +49,79 @@ const isProduction =
 app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
   next();
 });
 
 app.use(express.json({ limit: '64kb' }));
+
+function resolveClientIp(req: express.Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  const first = typeof raw === 'string' ? raw.split(',')[0]?.trim() : '';
+  return first || req.ip || req.socket.remoteAddress || 'unknown';
+}
+
+function createIpRateLimiter(options: { windowMs: number; maxRequests: number }): express.RequestHandler {
+  const buckets = new Map<string, { count: number; resetAt: number }>();
+  const MAX_TRACKED_IPS = 5000;
+
+  return (req, res, next) => {
+    const now = Date.now();
+    const ip = resolveClientIp(req);
+
+    if (buckets.size >= MAX_TRACKED_IPS) {
+      for (const [key, entry] of buckets) {
+        if (entry.resetAt <= now) {
+          buckets.delete(key);
+        }
+      }
+      if (buckets.size >= MAX_TRACKED_IPS) {
+        const oldestKey = buckets.keys().next().value;
+        if (oldestKey !== undefined) {
+          buckets.delete(oldestKey);
+        }
+      }
+    }
+
+    const current = buckets.get(ip);
+    if (!current || current.resetAt <= now) {
+      buckets.set(ip, { count: 1, resetAt: now + options.windowMs });
+      next();
+      return;
+    }
+
+    if (current.count >= options.maxRequests) {
+      const retryAfterSec = Math.max(1, Math.ceil((current.resetAt - now) / 1000));
+      res.setHeader('Retry-After', String(retryAfterSec));
+      res.status(429).json({
+        error: 'Too many requests. Please wait a moment and try again.',
+        retryAfterSeconds: retryAfterSec,
+      });
+      return;
+    }
+
+    current.count += 1;
+    next();
+  };
+}
+
+const advisorRateLimiter = createIpRateLimiter({ windowMs: 60_000, maxRequests: 20 });
+const trafficPostRateLimiter = createIpRateLimiter({ windowMs: 60_000, maxRequests: 60 });
+const ssoMintRateLimiter = createIpRateLimiter({ windowMs: 60_000, maxRequests: 20 });
 
 function getGenAIClient(): GoogleGenAI {
   return new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY,
     httpOptions: {
       timeout: 25000,
-      headers: {
-        'User-Agent': 'aistudio-build',
-      },
     },
   });
 }
 
-const TREDYN_ADVISOR_SYSTEM_INSTRUCTION = `You are Tredyn Advisor, the risk discipline and architecture specialist for Tredyn Group, Tredyn Protocol, and the flagship trading workspace Tredyn · GHR v3.2 Desk.
+const TALLYNX_ADVISOR_SYSTEM_INSTRUCTION = `You are TallyNX Advisor, the risk discipline and architecture specialist for TallyNX and the flagship trading workspace TallyNX Desk.
 
 Core architecture & product knowledge:
 1. Three Core Pillars:
@@ -74,24 +129,24 @@ Core architecture & product knowledge:
    - 02 Independent Intelligence: Strictly read-only drift and drawdown velocity monitoring. Alerts before limits breach.
    - 03 Engineering with Purpose: Non-custodial MT5 bridge and tamper-evident deal ledger. Orders stay in MT5 100% of the time.
 
-2. Flagship Tredyn · GHR v3.2 Desk Capabilities:
+2. Flagship TallyNX Desk Capabilities:
    - 3-TP & 4-TP Ladder Calculator (5-State Math) for exact entry sizing, SL risk, and multi-target splits.
    - 40% Consistency Rule Auditor & Prop / Personal Switcher with 7-day and monthly P&L calendars.
    - 12-Gate Fail-Closed Discipline Protocol with an automatic 15-minute cooldown after Stop-Loss hits.
-   - Safe Prop-Compliant Sync: Live Bridge (.ex5) from local/Private Dedicated IP, Official Cloud APIs (FundedNext MCP / Myfxbook / ProjectX), & instant .xlsx statement importer (no shared-IP Investor Password VPS).
-   - Offline-First PWA with encrypted Google Cloud sync and 3-Model Risk Coach.
+   - Safe Prop-Compliant Sync: Live Bridge (.ex5) from local/Private Dedicated IP, Official Cloud APIs (FundedNext MCP / Myfxbook / ProjectX), & instant .xlsx/.html statement importer (no shared-IP Investor Password VPS).
+   - Offline-First PWA inside TallyNX Desk with optional cloud sync and AI Risk Coach.
 
-3. Multi-Engine Desks & Verified Desk-Idea Marketplace (/marketplace):
-   - Tredyn is not restricted to GHR v3.2 Desk; traders can also build, publish, and license Custom Session Desks, EA Coexistent Guards, and Macro 4-TP Playbooks.
+3. Multi-Engine Desks & Verified Blueprint Showcase (/marketplace):
+   - Traders can explore, export, and publish Custom Session Desks, EA Coexistent Guards, and Macro 4-TP Playbooks in TallyNX Desk.
    - Strict Real-Data Rule: All listed performance metrics must come strictly from verified real MT5 data (Live Bridge .ex5, Official Cloud APIs like FundedNext MCP / Myfxbook / ProjectX, or SHA-256 verified broker .xlsx statements). Unverified synthetic claims are rejected fail-closed.
    - Zero Auto Copy-Trading: Marketplace distributes verified setup configurations and risk rulesets — it never executes or mirrors orders automatically across accounts.
 
 4. Communication guidelines:
-   - Never mention any legacy brand names. Refer only to Tredyn, Tredyn Protocol, and Tredyn · GHR v3.2 Desk.
+   - Never mention any legacy brand names. Refer only to TallyNX and TallyNX Desk.
    - Reply concisely in the user's language (Thai or English) using clean bullet points ("- **Title**: ...") and short paragraphs.
-   - Always clarify that Tredyn is an analytical software instrument and setup marketplace, not a broker, prop firm, or signal/copy-trade service.`;
+   - Always clarify that TallyNX is an analytical software instrument and setup showcase, not a broker, prop firm, or signal/copy-trade service.`;
 
-app.post(['/api/advisor', '/api/chat'], async (req, res) => {
+app.post(['/api/advisor', '/api/chat'], advisorRateLimiter, async (req, res) => {
   try {
     const { messages, lang, model: requestedModel } = req.body;
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -135,10 +190,10 @@ app.post(['/api/advisor', '/api/chat'], async (req, res) => {
         model: candidateModel,
         contents: formattedContents,
         config: {
-          systemInstruction: `${TREDYN_ADVISOR_SYSTEM_INSTRUCTION}${languageHint}${suffix}`,
+          systemInstruction: `${TALLYNX_ADVISOR_SYSTEM_INSTRUCTION}${languageHint}${suffix}`,
         },
       });
-      return response.text || 'Tredyn Advisor: Signal received, please refine your inquiry.';
+      return response.text || 'TallyNX Advisor: Request received, please refine your inquiry.';
     });
 
     return res.json({
@@ -156,7 +211,7 @@ app.post(['/api/advisor', '/api/chat'], async (req, res) => {
   } catch (error: unknown) {
     console.error('Gemini API advisor error:', error);
     let status = 502;
-    let message = 'Unable to reach Tredyn Advisor right now. Please try again.';
+    let message = 'Unable to reach TallyNX Advisor right now. Please try again.';
 
     if (error && typeof error === 'object') {
       const errObj = error as { status?: number; message?: string };
@@ -173,7 +228,7 @@ app.post(['/api/advisor', '/api/chat'], async (req, res) => {
           }
           if (parsed?.error?.status === 'DEADLINE_EXCEEDED' || status === 504) {
             message =
-              'Tredyn Advisor timed out while waiting for a response. Please try again.';
+              'TallyNX Advisor timed out while waiting for a response. Please try again.';
           } else if (parsed?.error?.message) {
             message = parsed.error.message;
           } else {
@@ -190,6 +245,7 @@ app.post(['/api/advisor', '/api/chat'], async (req, res) => {
 });
 
 // Telemetry & Health endpoint
+app.post('/api/telemetry/traffic', trafficPostRateLimiter);
 app.use('/api', createSiteTrafficRouter({ defaultSite: 'web' }));
 
 app.get('/api/health', (_req, res) => {
@@ -232,6 +288,11 @@ function resolveRequestOrigin(req: express.Request): string {
   return `${proto}://${forwardedHost}`;
 }
 
+function hasExplicitLangQuery(req: express.Request): boolean {
+  const queryLang = typeof req.query.lang === 'string' ? req.query.lang.trim().toLowerCase() : '';
+  return queryLang === 'en' || queryLang === 'th';
+}
+
 function resolveRequestLang(req: express.Request): Language {
   const queryLang = typeof req.query.lang === 'string' ? req.query.lang.trim().toLowerCase() : '';
   if (queryLang === 'en' || queryLang === 'th') {
@@ -260,6 +321,29 @@ function getSsoSigningConfig(): { secret: string; mode: 'signed-hmac' | 'ephemer
     devEphemeralSsoSecret = crypto.randomBytes(32).toString('hex');
   }
   return { secret: devEphemeralSsoSecret, mode: 'ephemeral-session' };
+}
+
+function isAuthorizedSsoMintRequest(req: express.Request): boolean {
+  const configuredKey = (process.env.TALLYNX_SSO_MINT_KEY || '').trim();
+  if (configuredKey.length < 16) {
+    return false;
+  }
+  const headerKey =
+    typeof req.headers['x-tallynx-internal-key'] === 'string'
+      ? req.headers['x-tallynx-internal-key'].trim()
+      : '';
+  const authHeader =
+    typeof req.headers.authorization === 'string' ? req.headers.authorization.trim() : '';
+  const bearerKey = authHeader.toLowerCase().startsWith('bearer ')
+    ? authHeader.slice(7).trim()
+    : '';
+  const candidate = headerKey || bearerKey;
+  if (!candidate) {
+    return false;
+  }
+  const candidateBuf = Buffer.from(candidate, 'utf8');
+  const expectedBuf = Buffer.from(configuredKey, 'utf8');
+  return candidateBuf.length === expectedBuf.length && crypto.timingSafeEqual(candidateBuf, expectedBuf);
 }
 
 function signSsoToken(claims: Record<string, unknown>, secret: string): string {
@@ -303,14 +387,23 @@ function verifySsoToken(
   }
 }
 
-// Cross-subdomain SSO for Mall and legacy Desk clients.
-app.post('/api/auth/sso-handoff', (req, res) => {
+// Cross-subdomain SSO for Mall and legacy Desk clients (fail-closed: requires verified internal mint key).
+app.post('/api/auth/sso-handoff', ssoMintRateLimiter, (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
+  if (!isAuthorizedSsoMintRequest(req)) {
+    return res.status(401).json({
+      ok: false,
+      code: 'AUTH_REQUIRED',
+      error: 'Authentication required to mint SSO handoff tokens.',
+    });
+  }
+
   const body = (req.body || {}) as {
     handle?: string;
     email?: string;
     displayName?: string;
     targetOrigin?: string;
+    lang?: string;
   };
   const requestedTarget = typeof body.targetOrigin === 'string' ? body.targetOrigin.trim() : '';
   let targetUrl: URL;
@@ -333,6 +426,8 @@ app.post('/api/auth/sso-handoff', (req, res) => {
   }
   const { secret, mode } = ssoConfig;
   const handle = normalizeTraderHandle(typeof body.handle === 'string' ? body.handle : '') || 'trader';
+  const rawLang = typeof body.lang === 'string' ? body.lang.trim().toLowerCase() : '';
+  const lang: Language = rawLang === 'en' ? 'en' : rawLang === 'th' ? 'th' : resolveRequestLang(req);
   const nowSec = Math.floor(Date.now() / 1000);
   const claims = {
     iss: 'tallynx.com',
@@ -350,7 +445,7 @@ app.post('/api/auth/sso-handoff', (req, res) => {
   const redirectUrl = buildCrossSubdomainSsoUrl({
     baseDeskUrl: targetUrl.href,
     handle,
-    lang: 'th',
+    lang,
     fromPath: '/',
     ssoToken: token,
   });
@@ -411,6 +506,37 @@ const handleSsoVerification = (req: express.Request, res: express.Response) => {
 app.get(['/api/auth/sso-verify', '/api/auth/sso-exchange'], handleSsoVerification);
 app.post(['/api/auth/sso-verify', '/api/auth/sso-exchange'], handleSsoVerification);
 
+function wrapSvgLines(input: string, maxCharsPerLine: number, maxLines: number): string[] {
+  const normalized = input.replace(/\s+/g, ' ').trim();
+  if (!normalized) return [];
+  const lines: string[] = [];
+  let remaining = normalized;
+
+  while (remaining.length > 0 && lines.length < maxLines) {
+    if (remaining.length <= maxCharsPerLine) {
+      lines.push(remaining);
+      remaining = '';
+      break;
+    }
+    const isLastLine = lines.length === maxLines - 1;
+    if (isLastLine) {
+      const slice = remaining.slice(0, Math.max(1, maxCharsPerLine - 1));
+      const breakIdx = slice.lastIndexOf(' ');
+      const trimmed = breakIdx > maxCharsPerLine * 0.5 ? slice.slice(0, breakIdx) : slice;
+      lines.push(`${trimmed.trimEnd()}…`);
+      remaining = '';
+      break;
+    }
+    const slice = remaining.slice(0, maxCharsPerLine + 1);
+    const breakIdx = slice.lastIndexOf(' ');
+    const cutAt = breakIdx > maxCharsPerLine * 0.45 ? breakIdx : maxCharsPerLine;
+    lines.push(remaining.slice(0, cutAt).trimEnd());
+    remaining = remaining.slice(cutAt).trimStart();
+  }
+
+  return lines;
+}
+
 // Dynamic OpenGraph SVG Card Generator (/api/og?route=...)
 app.get('/api/og', (req, res) => {
   const rawRoute = typeof req.query.route === 'string' && req.query.route.trim() ? req.query.route.trim() : '/';
@@ -421,8 +547,10 @@ app.get('/api/og', (req, res) => {
   const seo = getSeoMetadataForRoute(route, lang, origin);
   const { currentItem } = getRouteNavigationContext(route, lang);
   const isTh = lang === 'th';
-  const headline = seo.title.slice(0, 72);
-  const subline = seo.description.slice(0, 118);
+  const headlineLines = wrapSvgLines(seo.title, isTh ? 34 : 40, 2);
+  const sublineLines = wrapSvgLines(seo.description, isTh ? 64 : 74, 2);
+  const headlineBaseY = headlineLines.length > 1 ? 228 : 246;
+  const sublineBaseY = headlineLines.length > 1 ? 302 : 292;
   const statBoxes = [
     { label: isTh ? 'การเข้าถึงข้อมูล' : 'DATA ACCESS', value: isTh ? 'อ่านอย่างเดียว' : 'Read-only MT5' },
     { label: isTh ? 'การดูแลเงินทุน' : 'CUSTODY', value: isTh ? 'ไม่ถือเงิน' : 'Non-Custodial' },
@@ -430,13 +558,20 @@ app.get('/api/og', (req, res) => {
     { label: isTh ? 'ตั้งค่าโต๊ะเทรด' : 'DESK SETUP', value: isTh ? '5 ขั้นตอน' : '5 Steps' },
   ];
 
+  const headlineTspans = headlineLines
+    .map((line, idx) => `<tspan x="64" dy="${idx === 0 ? 0 : 44}">${escapeXml(line)}</tspan>`)
+    .join('');
+  const sublineTspans = sublineLines
+    .map((line, idx) => `<tspan x="64" dy="${idx === 0 ? 0 : 28}">${escapeXml(line)}</tspan>`)
+    .join('');
+
   const statMarkup = statBoxes
     .map((stat, idx) => {
       const x = 64 + idx * 272;
       return `
-  <rect x="${x}" y="390" width="248" height="126" rx="14" fill="#13161C" stroke="#262B36" stroke-width="1.5"/>
-  <text x="${x + 22}" y="430" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" fill="#9CA3AF" letter-spacing="1.4">${escapeXml(stat.label)}</text>
-  <text x="${x + 22}" y="482" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="30" font-weight="700" fill="#FFFFFF">${escapeXml(stat.value)}</text>`;
+  <rect x="${x}" y="400" width="248" height="122" rx="14" fill="#13161C" stroke="#262B36" stroke-width="1.5"/>
+  <text x="${x + 22}" y="438" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="600" fill="#9CA3AF" letter-spacing="1.4">${escapeXml(stat.label)}</text>
+  <text x="${x + 22}" y="488" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="28" font-weight="700" fill="#FFFFFF">${escapeXml(stat.value)}</text>`;
     })
     .join('');
 
@@ -457,18 +592,18 @@ app.get('/api/og', (req, res) => {
   <rect x="28" y="28" width="1144" height="574" rx="24" stroke="#232834" stroke-width="1.5"/>
 
   <!-- Brand Mark -->
-  <rect x="64" y="68" width="44" height="44" rx="10" fill="#0752E8" fill-opacity="0.14" stroke="#0752E8" stroke-width="1.5"/>
-  <polygon points="86,78 96,90 86,102 76,90" fill="#0752E8"/>
-  <text x="124" y="99" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="30" font-weight="800" fill="#FFFFFF" letter-spacing="-0.8">tallynx.</text>
+  <rect x="64" y="64" width="44" height="44" rx="10" fill="#0752E8" fill-opacity="0.14" stroke="#0752E8" stroke-width="1.5"/>
+  <polygon points="86,74 96,86 86,98 76,86" fill="#0752E8"/>
+  <text x="124" y="95" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="30" font-weight="800" fill="#FFFFFF" letter-spacing="-0.8">tallynx.</text>
 
   <!-- Pill Badge -->
-  <rect x="64" y="144" width="660" height="36" rx="18" fill="#0752E8" fill-opacity="0.12" stroke="#0752E8" stroke-opacity="0.45"/>
-  <text x="84" y="167" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="700" fill="#FFFFFF" letter-spacing="1.2">${escapeXml(currentItem.title)}</text>
+  <rect x="64" y="136" width="660" height="36" rx="18" fill="#0752E8" fill-opacity="0.12" stroke="#0752E8" stroke-opacity="0.45"/>
+  <text x="84" y="159" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" font-weight="700" fill="#FFFFFF" letter-spacing="1.2">${escapeXml(currentItem.title.slice(0, 60))}</text>
 
   <!-- Headline & Subline -->
-  <text x="64" y="252" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="40" font-weight="800" fill="#FFFFFF" letter-spacing="-1.2">${escapeXml(headline)}</text>
-  <text x="64" y="304" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="22" font-weight="400" fill="#A1A1AA">${escapeXml(subline)}</text>
-  <text x="64" y="344" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" fill="#10B981">● Live Bridge (.ex5) · Cloud API · Analytical Software Only (Non-Custodial)</text>
+  <text x="64" y="${headlineBaseY}" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="36" font-weight="800" fill="#FFFFFF" letter-spacing="-0.9">${headlineTspans}</text>
+  <text x="64" y="${sublineBaseY}" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="20" font-weight="400" fill="#A1A1AA">${sublineTspans}</text>
+  <text x="64" y="366" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" fill="#10B981">● Live Bridge (.ex5) · Cloud API · Analytical Software Only (Non-Custodial)</text>
 
   <!-- Telemetry Metric Cards -->
   ${statMarkup}
@@ -479,7 +614,12 @@ app.get('/api/og', (req, res) => {
 
   res.vary('Accept-Language');
   res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
-  res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=600, stale-while-revalidate=86400');
+  res.setHeader(
+    'Cache-Control',
+    hasExplicitLangQuery(req)
+      ? 'public, max-age=300, s-maxage=600, stale-while-revalidate=86400'
+      : 'private, no-cache'
+  );
   return sendCachedResponse(req, res, svg, !isVercel);
 });
 
@@ -602,12 +742,13 @@ function renderSsrDocument(req: express.Request, cleanedTemplateHtml: string): {
     return cached;
   }
 
-  const { dynamicOgImageUrl } = getSeoMetadataForRoute(normalized, lang, origin);
+  // Always serve the canonical raster OG image (social crawlers reject image/svg+xml).
+  const canonicalOgImage = `${origin}/og-share.jpg`;
   const langTaggedHtml = cleanedTemplateHtml.replace(
     /<html([^>]*?)lang=["'][^"']*["']/i,
     `<html$1lang="${lang}"`
   );
-  const headInjection = renderSsrSeoHeadTags(normalized, lang, origin, { ogImageUrl: dynamicOgImageUrl });
+  const headInjection = renderSsrSeoHeadTags(normalized, lang, origin, { ogImageUrl: canonicalOgImage });
   const noscriptSummary = renderSsrNoscriptNavigation(normalized, lang, origin);
 
   const withHead = langTaggedHtml.replace('</head>', `    ${headInjection}\n  </head>`);
@@ -662,7 +803,14 @@ if (isProduction) {
     const { html, etag } = renderSsrDocument(req, shell);
     res.vary('Accept-Language');
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=0, s-maxage=60, stale-while-revalidate=300');
+    // Only edge-cache SSR HTML when language is pinned in the query string;
+    // Accept-Language negotiated responses must remain private so CDN doesn't cross-serve languages.
+    res.setHeader(
+      'Cache-Control',
+      hasExplicitLangQuery(req)
+        ? 'public, max-age=0, s-maxage=60, stale-while-revalidate=300'
+        : 'private, no-cache'
+    );
     return sendCachedResponse(req, res, html, !isVercel, etag);
   });
 }

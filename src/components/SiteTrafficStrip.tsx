@@ -73,6 +73,8 @@ export const SiteTrafficStrip: React.FC<SiteTrafficStripProps> = React.memo(({ l
       : snapshot.siteTotalVisits
     : null;
 
+  const isMemoryFallback = snapshot?.storageMode === 'memory';
+
   return (
     <div
       className="mx-auto mt-8 flex max-w-7xl flex-wrap items-center justify-between gap-3 border-t border-hairline px-4 pt-5 text-xs text-muted sm:px-6 lg:px-8"
@@ -83,6 +85,19 @@ export const SiteTrafficStrip: React.FC<SiteTrafficStripProps> = React.memo(({ l
           <Eye className="h-3.5 w-3.5 text-muted" aria-hidden="true" />
           {isTh ? 'สถิติการเข้าชม' : 'Site Traffic'}
         </span>
+        {isMemoryFallback && (
+          <span
+            data-testid="traffic-local-mode-badge"
+            title={
+              isTh
+                ? 'กำลังแสดงสถิติชั่วคราวเฉพาะเซิร์ฟเวอร์นี้ (ยังไม่ได้เชื่อม Redis กลาง)'
+                : 'Showing single-instance session fallback counts (shared Redis counter not connected)'
+            }
+            className="inline-flex items-center rounded border border-hairline bg-canvas px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted"
+          >
+            {isTh ? 'โหมดโลคอล' : 'Local session'}
+          </span>
+        )}
         <div
           className="inline-flex items-center rounded-md border border-hairline bg-canvas p-0.5 text-[11px]"
           role="group"
@@ -115,8 +130,17 @@ export const SiteTrafficStrip: React.FC<SiteTrafficStripProps> = React.memo(({ l
       <dl className="flex flex-wrap items-center gap-x-5 gap-y-1.5 font-mono tabular-nums">
         <div className="flex items-center gap-1.5">
           <dt className="inline-flex items-center gap-1.5 font-sans text-muted">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
-            {isTh ? 'ออนไลน์' : 'Online'}
+            <span
+              className={`h-2 w-2 rounded-full ${isMemoryFallback ? 'bg-amber-500/80' : 'bg-emerald-500'}`}
+              aria-hidden="true"
+            />
+            {isMemoryFallback
+              ? isTh
+                ? 'เซสชันนี้'
+                : 'Active (local)'
+              : isTh
+                ? 'ออนไลน์'
+                : 'Online'}
           </dt>
           <dd className="font-semibold text-ink">
             {online === null ? '—' : formatTrafficCount(online, lang)}

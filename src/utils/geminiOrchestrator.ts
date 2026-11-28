@@ -109,6 +109,9 @@ export async function planModelRoute(params: {
 }): Promise<DecisionRoutePlan> {
   const pref = normalizeChatModelPreference(params.preference);
   const hasRichContext = Boolean(params.hasRichContext);
+  let asksForTradeSignal = /(buy|sell|signal|entry|tp|sl|target price|แนะนำเข้า|จุดเข้า|ซิก|สัญญาณ|กำไรแน่นอน)/i.test(
+    params.prompt,
+  );
 
   if (pref === GEMINI_FLASH_LITE_35) {
     return {
@@ -117,7 +120,7 @@ export async function planModelRoute(params: {
       routedBy: 'manual',
       routeTier: 'deep_analysis',
       decisionConfidence: 1,
-      asksForTradeSignal: false,
+      asksForTradeSignal,
       decisionModel: GEMINI_DECISION_MODEL,
     };
   }
@@ -128,7 +131,7 @@ export async function planModelRoute(params: {
       routedBy: 'manual',
       routeTier: 'quick_reply',
       decisionConfidence: 1,
-      asksForTradeSignal: false,
+      asksForTradeSignal,
       decisionModel: GEMINI_DECISION_MODEL,
     };
   }
@@ -136,9 +139,6 @@ export async function planModelRoute(params: {
   let routeTier = heuristicRouteTier(params.prompt, hasRichContext);
   let routedBy: DecisionRoutePlan['routedBy'] = 'heuristic';
   let decisionConfidence = 0.5;
-  let asksForTradeSignal = /(buy|sell|signal|entry|tp|sl|target price|แนะนำเข้า|จุดเข้า|ซิก|สัญญาณ|กำไรแน่นอน)/i.test(
-    params.prompt,
-  );
 
   if (params.decisionClient) {
     try {
@@ -180,7 +180,7 @@ export async function planModelRoute(params: {
         signalAns.type === 'noul' &&
         typeof signalAns.noul === 'number'
       ) {
-        asksForTradeSignal = signalAns.noul >= 0.65;
+        asksForTradeSignal = asksForTradeSignal || signalAns.noul >= 0.65;
       }
     } catch {
       // Fail-open to deterministic heuristic so a Decision API error never blocks AI chat
@@ -237,9 +237,6 @@ export function createDecisionGenAIClient(apiKey?: string): GoogleGenAI {
     apiKey: apiKey ?? process.env.GEMINI_API_KEY,
     httpOptions: {
       apiVersion: 'v1beta',
-      headers: {
-        'User-Agent': 'aistudio-build',
-      },
     },
   });
 }
